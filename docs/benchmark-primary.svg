@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 366" width="720" height="366" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="720" height="366" rx="14" fill="#ffffff"/>
+  <!-- x grid 0..100 -->
+  <g stroke="#eceff4" stroke-width="1">
+    <line x1="180" y1="48" x2="180" y2="323"/>
+    <line x1="308" y1="48" x2="308" y2="323"/>
+    <line x1="435" y1="48" x2="435" y2="323"/>
+    <line x1="563" y1="48" x2="563" y2="323"/>
+    <line x1="690" y1="48" x2="690" y2="323"/>
+  </g>
+  <g fill="#8b94a3" font-size="11" font-family="ui-monospace, Menlo, Consolas, monospace" text-anchor="middle">
+    <text x="180" y="340">0%</text><text x="308" y="340">25%</text><text x="435" y="340">50%</text><text x="563" y="340">75%</text><text x="690" y="340">100%</text>
+  </g>
+  <text x="435" y="24" text-anchor="middle" fill="#15181f" font-size="13" font-weight="600">Out-of-scope edit rate by condition (n=30, 95% CI)</text>
+
+  <!-- speclok current: 3.3 [0.6-16.7] y=68 -->
+  <text x="165" y="72" text-anchor="end" fill="#d7263d" font-size="12.5" font-weight="700">speclok (current)</text>
+  <line x1="183" y1="68" x2="265" y2="68" stroke="#d7263d" stroke-width="2"/>
+  <line x1="183" y1="62" x2="183" y2="74" stroke="#d7263d" stroke-width="2"/><line x1="265" y1="62" x2="265" y2="74" stroke="#d7263d" stroke-width="2"/>
+  <circle cx="197" cy="68" r="5" fill="#d7263d"/><text x="275" y="72" fill="#d7263d" font-size="11" font-weight="700">3.3%</text>
+  <!-- speclok v1 +MCP: 76.7 [59.1-88.2] y=108 -->
+  <text x="165" y="112" text-anchor="end" fill="#15181f" font-size="12.5">speclok v1 +MCP</text>
+  <line x1="481" y1="108" x2="630" y2="108" stroke="#9aa3b2" stroke-width="2"/>
+  <line x1="481" y1="102" x2="481" y2="114" stroke="#9aa3b2" stroke-width="2"/><line x1="630" y1="102" x2="630" y2="114" stroke="#9aa3b2" stroke-width="2"/>
+  <circle cx="571" cy="108" r="5" fill="#9aa3b2"/><text x="640" y="112" fill="#596273" font-size="11">76.7%</text>
+  <!-- SDD best-practice: 80.0 [62.7-90.5] y=148 -->
+  <text x="165" y="152" text-anchor="end" fill="#15181f" font-size="12.5">SDD best-practice</text>
+  <line x1="500" y1="148" x2="642" y2="148" stroke="#9aa3b2" stroke-width="2"/>
+  <line x1="500" y1="142" x2="500" y2="154" stroke="#9aa3b2" stroke-width="2"/><line x1="642" y1="142" x2="642" y2="154" stroke="#9aa3b2" stroke-width="2"/>
+  <circle cx="588" cy="148" r="5" fill="#9aa3b2"/><text x="652" y="152" fill="#596273" font-size="11">80.0%</text>
+  <!-- speclok v1 hooks: 83.3 [66.4-92.7] y=188 -->
+  <text x="165" y="192" text-anchor="end" fill="#15181f" font-size="12.5">speclok v1 (hooks)</text>
+  <line x1="519" y1="188" x2="653" y2="188" stroke="#9aa3b2" stroke-width="2"/>
+  <line x1="519" y1="182" x2="519" y2="194" stroke="#9aa3b2" stroke-width="2"/><line x1="653" y1="182" x2="653" y2="194" stroke="#9aa3b2" stroke-width="2"/>
+  <circle cx="605" cy="188" r="5" fill="#9aa3b2"/><text x="615" y="180" fill="#596273" font-size="11">83.3%</text>
+  <!-- control: 93.3 [78.7-98.2] y=228 -->
+  <text x="165" y="232" text-anchor="end" fill="#15181f" font-size="12.5">control (bare)</text>
+  <line x1="581" y1="228" x2="681" y2="228" stroke="#9aa3b2" stroke-width="2"/>
+  <line x1="581" y1="222" x2="581" y2="234" stroke="#9aa3b2" stroke-width="2"/><line x1="681" y1="222" x2="681" y2="234" stroke="#9aa3b2" stroke-width="2"/>
+  <circle cx="656" cy="228" r="5" fill="#9aa3b2"/><text x="591" y="220" fill="#596273" font-size="11" text-anchor="end">93.3%</text>
+  <!-- openspec: 96.7 [83.3-99.4] y=268 -->
+  <text x="165" y="272" text-anchor="end" fill="#15181f" font-size="12.5">openspec</text>
+  <line x1="605" y1="268" x2="687" y2="268" stroke="#9aa3b2" stroke-width="2"/>
+  <line x1="605" y1="262" x2="605" y2="274" stroke="#9aa3b2" stroke-width="2"/><line x1="687" y1="262" x2="687" y2="274" stroke="#9aa3b2" stroke-width="2"/>
+  <circle cx="673" cy="268" r="5" fill="#9aa3b2"/><text x="615" y="260" fill="#596273" font-size="11" text-anchor="end">96.7%</text>
+  <!-- spec-kit: 100 [88.6-100] y=308 -->
+  <text x="165" y="312" text-anchor="end" fill="#15181f" font-size="12.5">spec-kit</text>
+  <line x1="632" y1="308" x2="690" y2="308" stroke="#9aa3b2" stroke-width="2"/>
+  <line x1="632" y1="302" x2="632" y2="314" stroke="#9aa3b2" stroke-width="2"/><line x1="690" y1="302" x2="690" y2="314" stroke="#9aa3b2" stroke-width="2"/>
+  <circle cx="690" cy="308" r="5" fill="#9aa3b2"/><text x="628" y="300" fill="#596273" font-size="11" text-anchor="end">100%</text>
+</svg>

@@ -1,0 +1,4 @@
+# Normalize line endings; keep binaries intact.
+* text=auto eol=lf
+*.jar binary
+*.png binary

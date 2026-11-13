@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>speclok - spec-as-annotation for Java</title>
+<meta name="description" content="A seatbelt for an AI agent in a legacy codebase: your spec lives in the code as a @Spec/@AC annotation, the compiler enforces it, and the agent cannot edit where you did not let it.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23d7263d' stroke-width='4.4' stroke-linecap='round'%3E%3Ccircle cx='29' cy='33' r='8.5'/%3E%3Cpath d='M37.5 33v4.5a5.5 5.5 0 0 0 11 -1.2A19 19 0 1 0 41 50'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#f5f6f9; --surface:#ffffff; --raised:#fbfcfe; --ink:#161a21; --muted:#5b6475;
+    --line:#e4e8ef; --accent:#d7263d; --accent-soft:#fde8ea;
+    --gen:#3b82f6; --enf:#ef4444; --srv:#22c55e;
+    --code-bg:#0e1117; --code-ink:#e8edf4;
+    --mono:ui-monospace,"SF Mono","SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --maxw:1020px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#0b0e14;--surface:#121823;--raised:#0e141d;--ink:#e8edf4;--muted:#99a3b3;
+      --line:#212936;--accent:#ff5a6a;--accent-soft:#2a1416;--code-bg:#0a0d13;}
+  }
+  :root[data-theme="light"]{--bg:#f5f6f9;--surface:#fff;--raised:#fbfcfe;--ink:#161a21;--muted:#5b6475;--line:#e4e8ef;--accent:#d7263d;--accent-soft:#fde8ea;--code-bg:#0e1117;}
+  :root[data-theme="dark"]{--bg:#0b0e14;--surface:#121823;--raised:#0e141d;--ink:#e8edf4;--muted:#99a3b3;--line:#212936;--accent:#ff5a6a;--accent-soft:#2a1416;--code-bg:#0a0d13;}
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;}}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;}
+  a{color:var(--accent);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(18px,4vw,32px);}
+  code{font-family:var(--mono);}
+
+  /* nav */
+  nav{border-bottom:1px solid var(--line);position:sticky;top:0;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);z-index:10;}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:16px;}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-weight:700;font-size:1.05rem;letter-spacing:-.01em;color:var(--ink);white-space:nowrap;}
+  .brand b{color:var(--accent);}
+  .brand svg{width:26px;height:26px;}
+  .nav-links{display:flex;gap:22px;align-items:center;font-size:.92rem;}
+  .nav-links a{color:var(--muted);}
+  .nav-links a:hover{color:var(--ink);text-decoration:none;}
+  .ghbtn{border:1px solid var(--line);border-radius:8px;padding:7px 13px;color:var(--ink)!important;font-weight:600;}
+  @media(max-width:620px){.nav-links a:not(.ghbtn){display:none;}}
+
+  /* hero */
+  .hero{text-align:center;padding:clamp(56px,10vw,110px) 0 clamp(40px,7vw,70px);}
+  .hero .mark{width:76px;height:76px;margin:0 auto 22px;display:block;}
+  .hero h1{font-family:var(--mono);font-size:clamp(2.4rem,7vw,4rem);font-weight:700;letter-spacing:-.03em;margin:0 0 6px;white-space:nowrap;}
+  .hero h1 b{color:var(--accent);}
+  .tagline{font-size:clamp(1.1rem,2.6vw,1.45rem);color:var(--ink);max-width:22ch;margin:10px auto 6px;text-wrap:balance;font-weight:560;}
+  .sub{color:var(--muted);max-width:56ch;margin:0 auto 30px;font-size:1.02rem;}
+  .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:10px;font-weight:600;font-size:.98rem;border:1px solid transparent;}
+  .btn-primary{background:var(--accent);color:#fff!important;}
+  .btn-primary:hover{text-decoration:none;filter:brightness(1.06);}
+  .btn-ghost{border-color:var(--line);color:var(--ink)!important;background:var(--surface);}
+  .btn-ghost:hover{text-decoration:none;border-color:var(--muted);}
+
+  /* section scaffold */
+  section{padding:clamp(40px,7vw,72px) 0;border-top:1px solid var(--line);}
+  .eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 12px;}
+  h2{font-size:clamp(1.5rem,3.6vw,2.1rem);letter-spacing:-.02em;margin:0 0 .5rem;text-wrap:balance;font-weight:680;}
+  .lead{color:var(--muted);max-width:62ch;margin:0 0 28px;font-size:1.05rem;}
+
+  /* code blocks */
+  .code{background:var(--code-bg);border:1px solid var(--line);border-radius:12px;overflow-x:auto;}
+  .code .bar{display:flex;gap:6px;padding:11px 14px;border-bottom:1px solid #ffffff14;}
+  .code .bar i{width:11px;height:11px;border-radius:50%;background:#ffffff26;display:block;}
+  .code pre{margin:0;padding:18px 20px;font-family:var(--mono);font-size:.86rem;line-height:1.7;color:var(--code-ink);}
+  .code .cmt{color:#8b97a8;} .code .kw{color:#ff8da3;} .code .str{color:#9ece6a;} .code .an{color:#7aa2f7;} .code .fn{color:#e0af68;}
+  .err{color:#ff7a85;}
+
+  .demo{display:grid;grid-template-columns:1.25fr 1fr;gap:20px;align-items:start;}
+  @media(max-width:780px){.demo{grid-template-columns:1fr;}}
+  .demo-note{background:var(--accent-soft);border:1px solid var(--line);border-radius:12px;padding:18px 20px;}
+  .demo-note strong{color:var(--accent);}
+
+  /* why */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media(max-width:700px){.cols{grid-template-columns:1fr;}}
+  .leak{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 22px;}
+  .leak h3{margin:0 0 6px;font-size:1.1rem;}
+  .leak p{margin:0;color:var(--muted);font-size:.96rem;}
+  .leak .files{margin-top:14px;background:var(--code-bg);border-radius:9px;padding:12px 14px;font-family:var(--mono);font-size:.76rem;color:#8b97a8;line-height:1.75;overflow-x:auto;}
+  .leak .files b{color:#e8edf4;font-weight:400;}
+
+  /* roles */
+  .roles{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+  @media(max-width:760px){.roles{grid-template-columns:1fr;}}
+  .role{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;border-top:3px solid var(--rc);}
+  .role .tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--rc);font-weight:700;}
+  .role h3{margin:.4rem 0 .5rem;font-size:1.12rem;}
+  .role p{margin:0 0 12px;color:var(--muted);font-size:.95rem;}
+  .role .ep{font-family:var(--mono);font-size:.78rem;color:var(--ink);background:var(--raised);border:1px solid var(--line);border-radius:7px;padding:3px 8px;display:inline-block;}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px;}
+  @media(max-width:620px){.stats{grid-template-columns:1fr;}}
+  .statt{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:18px 18px;}
+  .statt .sv{font-size:2rem;font-weight:720;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+  .statt .sk{color:var(--muted);font-size:.9rem;margin-top:.15rem;}
+  .bench-pill{display:inline-flex;align-items:center;gap:7px;margin-top:18px;font-family:var(--mono);font-size:.76rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 12px;}
+  .bench-pill b{color:var(--accent);}
+  /* results table */
+  .btab-wrap{margin-top:22px;overflow-x:auto;border:1px solid var(--line);border-radius:13px;}
+  .btab{width:100%;border-collapse:collapse;font-size:.9rem;min-width:520px;}
+  .btab th,.btab td{text-align:left;padding:11px 16px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  .btab thead th{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;}
+  .btab td:not(:first-child),.btab th:not(:first-child){font-variant-numeric:tabular-nums;}
+  .btab tbody tr:last-child td{border-bottom:none;}
+  .btab tr.me td{background:var(--accent-soft);font-weight:680;color:var(--ink);}
+  .btab tr.me td:first-child{color:var(--accent);}
+  .btab .ci{color:var(--muted);font-weight:400;}
+
+  footer{border-top:1px solid var(--line);padding:40px 0 60px;color:var(--muted);font-size:.92rem;}
+  footer .row{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center;}
+  footer .links{display:flex;gap:20px;flex-wrap:wrap;}
+  .pill{display:inline-block;font-family:var(--mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:2px 9px;}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="brand">
+    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" style="color:var(--accent)"><circle cx="29" cy="33" r="8.5"/><path d="M37.5 33v4.5a5.5 5.5 0 0 0 11 -1.2A19 19 0 1 0 41 50"/></svg>
+    spec<b>lok</b>
+  </span>
+  <span class="nav-links">
+    <a href="#for">Who</a>
+    <a href="#why">Why</a>
+    <a href="#how">How</a>
+    <a href="#proof">Proof</a>
+    <a href="#start">Quickstart</a>
+    <a class="ghbtn" href="https://github.com/Cherobin/speclok">GitHub</a>
+  </span>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <svg class="mark" viewBox="0 0 64 64" fill="none" stroke="var(--accent)" stroke-width="4.4" stroke-linecap="round"><circle cx="29" cy="33" r="8.5"/><path d="M37.5 33v4.5a5.5 5.5 0 0 0 11 -1.2A19 19 0 1 0 41 50"/></svg>
+  <h1>spec<b>lok</b></h1>
+  <p class="tagline">spec-as-annotation for Java.</p>
+  <p class="sub">Your spec lives in the code as a <code>@Spec</code>/<code>@AC</code> annotation, and the compiler enforces it. Just as <code>javac</code> rejects a bad <code>@Override</code>, speclok makes it reject an incomplete <code>@Spec</code>.</p>
+  <div class="cta">
+    <a class="btn btn-primary" href="https://github.com/Cherobin/speclok">View on GitHub</a>
+    <a class="btn btn-ghost" href="#start">Quickstart</a>
+  </div>
+  <a href="#proof" class="bench-pill" style="text-decoration:none"><b>benchmark-driven</b> &middot; 210 runs &middot; 3.3% out-of-scope edits</a>
+</div></header>
+
+<section id="for"><div class="wrap">
+  <p class="eyebrow">who it's for</p>
+  <h2>A seatbelt for an AI agent in a legacy codebase</h2>
+  <p class="lead">You have a large, old codebase with little or no documentation. Nobody holds the whole thing in their head, the rules for what-can-change-where live in people's memory, and letting an agent loose in there is a risk. speclok turns that guardrail from tribal knowledge into a rule the compiler enforces.</p>
+  <div class="roles">
+    <div class="leak">
+      <h3>No docs, no time to write them</h3>
+      <p>You never stop to document the repo. The spec accretes where work happens: each time you touch a method, you annotate that method. The hot paths get specified over months, and because the spec is an annotation on the code, it cannot silently lie.</p>
+    </div>
+    <div class="leak">
+      <h3>Guardrails that keep slipping</h3>
+      <p>"Don't touch billing" lives in an <code>AGENTS.md</code>, a wiki, a senior's head - and it leaks. Here the boundary is <code>@Spec(allowedFiles)</code> + <code>@Protected</code>, blocked at write time, not caught in review.</p>
+    </div>
+    <div class="leak">
+      <h3>Too big to hold in context</h3>
+      <p>The agent gets only the slice it needs - the task briefing, over MCP - and is pinned to the declared scope, so it does not wander the other 2,000 files. The benchmark shows it: 3.3% out-of-scope edits vs 77-100%.</p>
+    </div>
+  </div>
+  <p style="color:var(--muted);font-size:.95rem;margin-top:18px">It does not make the agent smarter - correctness is flat in the benchmark. It makes it <b style="color:var(--ink)">confinable</b>: you do not wake up to a commit in <code>PaymentProcessor.java</code> that nobody asked for.</p>
+</div></section>
+
+<section id="demo"><div class="wrap">
+  <p class="eyebrow">the spec is the code</p>
+  <h2>Write the contract where it lives</h2>
+  <p class="lead">No separate spec file to drift. The contract sits on the class and the method it governs, and an incomplete spec is a compile error, shown inline like a misused <code>@Getter</code>.</p>
+  <div class="demo">
+    <div class="code">
+      <div class="bar"><i></i><i></i><i></i></div>
+<pre><span class="kw">@Spec</span>(
+  id = <span class="str">"T-200"</span>,
+  objective = <span class="str">"Shipping must never be negative"</span>,
+  allowedFiles = {<span class="str">"Shipping.java"</span>, <span class="str">"ShippingTest.java"</span>},
+  symbols = {<span class="str">"Shipping.calculate"</span>},
+  outOfScope = {<span class="str">"change the price table"</span>}
+)
+<span class="kw">public class</span> Shipping {
+
+  <span class="an">@AC</span>(id = <span class="str">"AC1"</span>, given = <span class="str">"a subtotal of 50"</span>,
+      when = <span class="str">"calculate(50) is called"</span>,
+      then = <span class="str">"returns a fee &gt;= 0, never negative"</span>)
+  <span class="kw">public int</span> <span class="fn">calculate</span>(<span class="kw">int</span> subtotal) { ... }
+}</pre>
+    </div>
+    <div class="demo-note">
+      <p style="margin:0 0 10px"><strong>Leave the <code>objective</code> empty</strong> or drop the <code>then</code>, and your IDE underlines it in red:</p>
+      <div class="code"><pre><span class="err">Shipping.java:2: error:</span>
+  spec-lint [T-200]:
+  objective is empty</pre></div>
+      <p style="margin:12px 0 0;color:var(--muted);font-size:.9rem">A standard <code>javac</code> error. No agent required.</p>
+    </div>
+  </div>
+</div></section>
+
+<section id="why"><div class="wrap">
+  <p class="eyebrow">why</p>
+  <h2>Two things carry the spec today, and both leak</h2>
+  <p class="lead">speclok collapses them into one place that the compiler checks and git versions, in the same commit as the code.</p>
+  <div class="cols">
+    <div class="leak">
+      <h3>Prompts leak</h3>
+      <p>You put the rules in a system prompt, <code>AGENTS.md</code>, <code>.cursorrules</code> - one file per tool. The model follows them... usually. Nothing enforces them, they balloon, and the bigger they grow the more they get ignored.</p>
+    </div>
+    <div class="leak">
+      <h3>Markdown specs rot</h3>
+      <p>The real contract scatters across a ticket, a doc, an ADR. The moment the code changes, the doc does not - and an agent led by a stale doc walks into a wall.</p>
+      <div class="files">
+AGENTS.md            <span style="color:#8b97a8">"never negative"</span>
+.cursorrules         <span style="color:#8b97a8">"...free over 200"</span>
+docs/specs/ship.md   <span style="color:#8b97a8">edited months ago</span>
+docs/adr/0007.md     <span style="color:#8b97a8">why we chose it</span>
+<b>Shipping.java        the actual code</b>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <p class="eyebrow">how it works</p>
+  <h2>One source of truth, three jobs</h2>
+  <p class="lead">From the <code>@Spec</code>/<code>@AC</code> on the code, speclok does all three - deterministically, always in sync.</p>
+  <div class="roles">
+    <div class="role" style="--rc:var(--gen)">
+      <span class="tag">generates</span>
+      <h3>The docs</h3>
+      <p>The spec book, the per-task agent briefing and the task index - derived from the annotation, never hand-written.</p>
+      <span class="ep">specbook &middot; specctx &middot; sdd list</span>
+    </div>
+    <div class="role" style="--rc:var(--enf)">
+      <span class="tag">enforces</span>
+      <h3>The rules</h3>
+      <p>Incomplete spec is a compile error. Edits outside scope are blocked. "Done" is refused until every criterion's test passes.</p>
+      <span class="ep">SpecLintProcessor &middot; scope/compile/accept</span>
+    </div>
+    <div class="role" style="--rc:var(--srv)">
+      <span class="tag">serves</span>
+      <h3>The agent</h3>
+      <p>A built-in MCP server hands any AI agent the briefing, the gates and a scaffold tool for new specs.</p>
+      <span class="ep">sdd mcp &middot; JSON-RPC over stdio</span>
+    </div>
+  </div>
+</div></section>
+
+<section id="proof"><div class="wrap">
+  <p class="eyebrow">benchmark-driven</p>
+  <h2>Fewer wrong edits - measured, not claimed</h2>
+  <p class="lead">A 210-run benchmark (7 setups, the same Java brownfield tasks, Claude Sonnet 5). speclok edits an out-of-scope file far less often than a bare agent - at a lower token cost than every governed setup except spec-kit.</p>
+  <div class="stats">
+    <div class="statt"><div class="sv" style="color:var(--accent)">3.3%</div><div class="sk">of speclok runs touched an out-of-scope file</div></div>
+    <div class="statt"><div class="sv">77-100%</div><div class="sk">for every other setup - bare agent included</div></div>
+    <div class="statt"><div class="sv">~28x</div><div class="sk">fewer out-of-scope edits than the bare agent</div></div>
+  </div>
+  <div class="btab-wrap">
+    <table class="btab">
+      <thead><tr><th>setup</th><th>out-of-scope edits (95% CI)</th><th>correctness</th><th>tokens, median</th></tr></thead>
+      <tbody>
+        <tr><td>control (bare agent)</td><td>93.3% <span class="ci">[78.7-98.2]</span></td><td>~83%</td><td>313k</td></tr>
+        <tr><td>spec-kit</td><td>100% <span class="ci">[88.6-100]</span></td><td>~80%</td><td>803k</td></tr>
+        <tr><td>openspec</td><td>96.7% <span class="ci">[83.3-99.4]</span></td><td>~83%</td><td>951k</td></tr>
+        <tr><td>SDD best-practice</td><td>80.0% <span class="ci">[62.7-90.5]</span></td><td>~83%</td><td>1040k</td></tr>
+        <tr class="me"><td>speclok</td><td>3.3% <span class="ci">[0.6-16.7]</span></td><td>~80%</td><td>861k</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="color:var(--muted);font-size:.92rem;margin-top:16px">Correctness (~83%) is flat across all setups - the cost buys <b style="color:var(--ink)">scope discipline</b>, which is what you want an agent kept on a leash for.</p>
+  <p style="font-size:.92rem;margin-top:10px"><a href="docs/benchmark.md" style="color:var(--accent);font-weight:600;text-decoration:none">Full methods &amp; 95% confidence intervals &rarr;</a></p>
+
+  <h3 style="margin-top:34px;font-size:1.1rem">Governance you can opt into</h3>
+  <div class="roles" style="margin-top:14px">
+    <div class="role" style="--rc:var(--enf)">
+      <span class="tag">protected</span>
+      <h3>@Protected areas</h3>
+      <p>Mark credentials, audit or compliance code with <code>@Protected(tier)</code>. The scope guard blocks <code>FORBIDDEN</code> edits and checkpoints <code>RESTRICTED</code> ones.</p>
+    </div>
+    <div class="role" style="--rc:var(--gen)">
+      <span class="tag">roles</span>
+      <h3>Subagents</h3>
+      <p>Four role-separated agents - spec-writer, planner, implementer, reviewer - with scoped tools and the right model per step.</p>
+    </div>
+    <div class="role" style="--rc:var(--srv)">
+      <span class="tag">one command</span>
+      <h3>sdd init</h3>
+      <p>Writes the hooks, the MCP server, a config and a working-agreements <code>AGENTS.md</code> in one step. Nothing hand-wired.</p>
+    </div>
+  </div>
+</div></section>
+
+<section id="start"><div class="wrap">
+  <p class="eyebrow">quickstart</p>
+  <h2>60 seconds, just a JDK</h2>
+  <p class="lead">The prebuilt harness ships in the repo. Point it at the example - no Maven, no build, Java 11+.</p>
+  <div class="code">
+    <div class="bar"><i></i><i></i><i></i></div>
+<pre><span class="cmt"># clone and enter the example</span>
+git clone https://github.com/Cherobin/speclok &amp;&amp; cd speclok/example
+
+<span class="cmt"># documentation, generated from the annotations</span>
+java -jar lib/speclok.jar specbook src/main/java -o SPECBOOK.md
+
+<span class="cmt"># the task index, a briefing, and the gates</span>
+java -jar lib/speclok.jar sdd list
+java -jar lib/speclok.jar sdd briefing T-200
+java -jar lib/speclok.jar sdd verify  T-200   <span class="cmt"># build + the @AC tests</span></pre>
+  </div>
+  <p style="margin-top:22px"><a class="btn btn-primary" href="https://github.com/Cherobin/speclok">Read the full README</a></p>
+</div></section>
+
+<footer><div class="wrap">
+  <div class="row">
+    <span class="brand" style="font-size:1rem">
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" style="width:22px;height:22px;color:var(--accent)"><circle cx="29" cy="33" r="8.5"/><path d="M37.5 33v4.5a5.5 5.5 0 0 0 11 -1.2A19 19 0 1 0 41 50"/></svg>
+      spec<b style="color:var(--accent)">lok</b>
+    </span>
+    <span class="links">
+      <a href="https://github.com/Cherobin/speclok">GitHub</a>
+      <a href="https://github.com/Cherobin/speclok/blob/main/docs/how-it-works.md">How it works</a>
+      <a href="https://github.com/Cherobin/speclok/blob/main/docs/using-with-an-agent.md">Use with an agent</a>
+      <a href="https://github.com/Cherobin/speclok/blob/main/LICENSE">MIT</a>
+    </span>
+  </div>
+  <p style="margin:20px 0 0"><span class="pill">prototype</span> &nbsp; Standalone and dependency-free - only the JDK. The Java package is <code>speclok</code>; drop <code>speclok.jar</code> on your annotation-processor path.</p>
+</div></footer>
+
+<script>
+  // honor the viewer's theme toggle if the host stamps data-theme; otherwise follow the OS.
+  (function(){try{var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+</script>
+</body>
+</html>

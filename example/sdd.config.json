@@ -1,0 +1,11 @@
+{
+  "annotationRoots": ["src/main/java"],
+  "scopeGuardOnNoTask": "warn",
+  "docsRoots": ["."],
+  "docsEntryPoint": "README.md",
+  "docsEntryMaxLines": 120,
+
+  "_note": "By default the gate uses the internal javac (zero dependencies - runs anywhere). To use Maven, rename the two keys below to buildCommand/testCommand (needs mvn on the PATH or ./mvnw).",
+  "_buildCommand": "mvn -q -o -DskipTests compile",
+  "_testCommand": "mvn -q -o -DfailIfNoTests=false test"
+}
