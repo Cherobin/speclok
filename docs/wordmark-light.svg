@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" width="300" height="72" fill="none">
+  <title>speclok</title>
+  <g transform="translate(6,4)" stroke="#d7263d" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="29" cy="33" r="8.5"/>
+    <path d="M37.5 33v4.5a5.5 5.5 0 0 0 11 -1.2A19 19 0 1 0 41 50"/>
+  </g>
+  <text x="78" y="47" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="34" font-weight="700" letter-spacing="-1">
+    <tspan fill="#191c22">spec</tspan><tspan fill="#d7263d">lok</tspan>
+  </text>
+</svg>

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sdd": {
+      "command": "java",
+      "args": ["-jar", "lib/speclok.jar", "sdd", "mcp"]
+    }
+  }
+}

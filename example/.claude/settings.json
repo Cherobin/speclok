@@ -1,0 +1,28 @@
+{
+  "$comment": "Example Java project. The SDD harness is the local `lib/speclok.jar`. These hooks call the jar's `sdd` app - zero Python. In a real project you add speclok.jar to the annotation-processor path the same way.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "java -jar \"$CLAUDE_PROJECT_DIR/lib/speclok.jar\" sdd scope" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "java -jar \"$CLAUDE_PROJECT_DIR/lib/speclok.jar\" sdd compile" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "java -jar \"$CLAUDE_PROJECT_DIR/lib/speclok.jar\" sdd accept" }
+        ]
+      }
+    ]
+  }
+}

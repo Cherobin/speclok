@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.example</groupId>
+  <artifactId>shop</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+
+  <properties>
+    <maven.compiler.release>11</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencies>
+    <!-- speclok (the standalone, dependency-free SDD harness). In a published project this would be
+         the normal io.speclok:speclok artifact; here it is the local jar the project carries. It is
+         the source of the @Spec/@AC annotations (compile-time, @Retention(SOURCE)) AND the
+         SpecLintProcessor, so an incomplete @Spec becomes a COMPILE ERROR during `mvn compile` / in
+         IntelliJ. -->
+    <dependency>
+      <groupId>io.speclok</groupId>
+      <artifactId>speclok</artifactId>
+      <version>local</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/lib/speclok.jar</systemPath>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.14.1</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>

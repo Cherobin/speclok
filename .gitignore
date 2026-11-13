@@ -1,0 +1,19 @@
+# SDD runtime state (active task, iteration counters, telemetry) - local, never committed
+.sdd-state/
+
+# Build output
+target/
+out/
+*.class
+/speclok.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Note: dist/speclok.jar IS committed on purpose, so the example runs with no build.
