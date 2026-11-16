@@ -49,7 +49,7 @@ decision: commit the `@Spec` change (or delete the snapshot) and it takes effect
 | Edit tool on a file outside the scope | `sdd scope` | before the edit |
 | Widening `allowedFiles` / bumping the id, then editing elsewhere | `sdd scope` (baseline scope) | before the edit |
 | Edit tool on `.sdd-state/**` (except arming a task from idle) | `sdd scope` | before the edit |
-| A shell command (`sed -i`, `echo >`, a generator) writing outside the scope | `sdd accept` (`git status` vs the scope) | at "done" |
+| A shell command (`sed -i`, `echo >`, a generator) writing outside the scope, committed or not | `sdd accept` (`git status` and the commits made this turn, vs the scope) | at "done" |
 | Dropping or renaming the test of an `@AC`, or deleting the test file | `sdd accept` | at "done" |
 | An `@Spec` / `@Protected` that only appears in a comment or a string | ignored by the parser | - |
 

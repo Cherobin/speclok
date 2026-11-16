@@ -135,16 +135,67 @@ final class SddScope {
 		Map<String, String> dirty = dirtyFiles();
 		if (dirty == null) return;                      // not a git work tree: nothing to baseline
 		List<String> lines = new ArrayList<String>();
+		String head = headSha();
+		if (head != null) lines.add(HEAD_MARK + head);  // no tab: the "hash<TAB>path" readers skip it
 		for (Map.Entry<String, String> e : dirty.entrySet()) lines.add(e.getValue() + "\t" + e.getKey());
 		writeLines(baselineFile(), lines);
 	}
 
+	// The baseline also pins HEAD. `git status` only sees what is uncommitted, so an agent that
+	// commits its work (an ordinary "...and commit" request) would otherwise end the turn with a clean
+	// tree: nothing out of scope to report, and nothing "changed" at all.
+	private static final String HEAD_MARK = "#head ";
+
+	private static String headSha() {
+		try {
+			SddGates.Proc r = SddGates.run(Arrays.asList("git", "rev-parse", "--verify", "-q", "HEAD"));
+			String sha = r.outText.trim();
+			return r.code == 0 && !sha.isEmpty() ? sha : null;
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	private static String baselineHead() {
+		for (String l : readLines(baselineFile())) if (l.startsWith(HEAD_MARK)) return l.substring(HEAD_MARK.length()).trim();
+		return null;
+	}
+
+	/** Files changed by commits made since the baseline -> current content hash. Empty when HEAD has
+	 * not moved, the baseline predates this marker, or the old HEAD is no longer reachable. */
+	private static Map<String, String> committedSinceBaseline() {
+		Map<String, String> out = new LinkedHashMap<String, String>();
+		try {
+			String base = baselineHead(), now = headSha();
+			if (base == null || now == null || base.equals(now)) return out;
+			SddGates.Proc r = SddGates.run(Arrays.asList(
+				"git", "diff", "--name-only", "-z", "--no-renames", "--relative", base, "HEAD", "--", "."));
+			if (r.code != 0) return out;
+			for (String path : r.outText.split("\0")) {
+				path = path.replace('\\', '/');
+				if (!path.isEmpty()) out.put(path, hash(path));
+			}
+		} catch (Exception ignore) {}
+		return out;
+	}
+
+	/** Everything that may have changed since the baseline: what was committed since then plus what
+	 * is uncommitted now. {@code null} if this is not a git work tree. */
+	private static Map<String, String> changedNow() {
+		Map<String, String> dirty = dirtyFiles();
+		if (dirty == null) return null;
+		Map<String, String> all = committedSinceBaseline();
+		all.putAll(dirty);
+		return all;
+	}
+
 	// ---- end-of-turn check ---------------------------------------------------
 
-	/** Files changed since {@link #arm} that are outside the baseline scope - whatever wrote them.
+	/** Files changed since {@link #arm} that are outside the baseline scope - whatever wrote them,
+	 * committed or not.
 	 * {@code null} when git is unavailable (the caller decides whether that blocks). */
 	static List<String> outOfScopeChanges(SpecBookApp.Spec task) {
-		Map<String, String> dirty = dirtyFiles();
+		Map<String, String> dirty = changedNow();
 		if (dirty == null) return null;
 		Map<String, String> before = new LinkedHashMap<String, String>();
 		for (String l : readLines(baselineFile())) {
@@ -170,7 +221,7 @@ final class SddScope {
 	 * list means nothing changed since the turn started. */
 	static List<String> changedSinceBaseline() {
 		if (!Files.exists(baselineFile())) return null;
-		Map<String, String> dirty = dirtyFiles();
+		Map<String, String> dirty = changedNow();
 		if (dirty == null) return null;
 		Map<String, String> before = new LinkedHashMap<String, String>();
 		for (String l : readLines(baselineFile())) {

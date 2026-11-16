@@ -174,6 +174,23 @@ stop;         expect 0 "an idle follow-up turn (nothing changed) is not re-check
 echo "// a shell edit in this turn" >> "$P/$FRETE"
 stop;         expect 2 "but a turn that changes something is checked again" "[AC1]"
 
+echo "stop gate: the agent commits its work before saying done"
+project commitred; task T-200
+sdd arm
+replace $FRETE 'return Math.max(frete, 0);' 'return frete - 100;'   # AC1 now fails
+commit "agent: fix shipping"
+stop;         expect 2 "a committed change is not an idle turn: the @AC tests still gate 'done'" "missing ACs: [AC1]"
+project commitscope; task T-200
+sdd arm
+echo "// shell edit outside the scope" >> "$P/$CUPOM"
+commit "agent: wip"
+stop;         expect 2 "a shell edit outside the scope is caught even after it is committed" "$CUPOM"
+project commithuman; task T-200
+echo "// the human's own commit, before the turn" >> "$P/$CUPOM"
+commit "human: unrelated work"
+sdd arm
+stop;         expect 0 "a commit made before the turn started is not blamed on it"
+
 project locale
 edit $FRETE
 mkdir -p "$P/docs novos" && echo x > "$P/docs novos/ação.md"
