@@ -105,8 +105,9 @@ Shipping.java         the code - which may or may not match any of the above
 speclok collapses that to one place: the contract sits on `Shipping.calcular` as `@Spec`/`@AC`, the
 compiler checks it, and it ships in the same commit as the code, so it cannot drift. Everything else -
 the docs, the agent briefing, the task index - is **generated** from it: one source, N always-in-sync
-outputs, instead of N files to hand-maintain. Scope, compilation, and acceptance become rules the
-model cannot disobey, and the spec becomes a compile-time contract for humans too.
+outputs, instead of N files to hand-maintain. Scope, compilation, and acceptance become deterministic
+gates the harness enforces, not rules the prompt asks the model to follow, and the spec becomes a
+compile-time contract for humans too.
 
 (It does not replace every doc - architecture notes and rationale still belong in prose. It replaces
 the per-symbol contract that used to rot in markdown.)
@@ -187,7 +188,7 @@ flowchart LR
 
     SRC --> GEN & ENF & MCP
     GEN --> D["Spec Book · briefing · task index<br/><i>always in sync</i>"]
-    ENF --> B["compile error · blocked edit · blocked 'done'<br/><i>rules the model can't disobey</i>"]
+    ENF --> B["compile error · blocked edit · blocked 'done'<br/><i>deterministic gates, not prompt rules</i>"]
     MCP --> A["AI coding agent"]
 
     classDef src fill:#1f2937,color:#fff,stroke:#111;

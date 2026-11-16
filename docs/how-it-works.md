@@ -24,7 +24,7 @@ git (`git blame` on the annotation).
 
 Because these are generated, the docs can never drift from the code.
 
-## 3. speclok ENFORCES (rules the model cannot disobey)
+## 3. speclok ENFORCES (deterministic gates, not prompt rules)
 
 - **Compile time** - `SpecLintProcessor` is a standard annotation processor. An incomplete `@Spec`
   (empty `objective`/`allowedFiles`, no `@AC`, a malformed id, an empty `given/when/then`)

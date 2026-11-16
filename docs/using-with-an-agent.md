@@ -21,11 +21,13 @@ Drop two files at your project root (copy them from [`../example/`](../example/)
 }
 ```
 
-**`.claude/settings.json`** - the hooks (the rules the model cannot disobey):
+**`.claude/settings.json`** - the hooks (the deterministic gates: a scope baseline at the start of each
+turn, scope on every edit, compile, and the end-of-turn scope/acceptance check):
 
 ```json
 {
   "hooks": {
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "java -jar \"$CLAUDE_PROJECT_DIR/lib/speclok.jar\" sdd arm" }] }],
     "PreToolUse":  [{ "matcher": "Edit|Write|MultiEdit|NotebookEdit",
       "hooks": [{ "type": "command", "command": "java -jar \"$CLAUDE_PROJECT_DIR/lib/speclok.jar\" sdd scope" }] }],
     "PostToolUse": [{ "matcher": "Edit|Write|MultiEdit|NotebookEdit",

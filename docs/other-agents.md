@@ -62,7 +62,7 @@ agents:
   3. **`sdd scopeci --base origin/main`** - a CI check that fails a PR touching files outside
      `allowedFiles`, even if a human or a non-hooked agent made the edit.
 
-So "the rules the model cannot disobey" still holds without Claude Code: the compiler and CI are the
+So the deterministic enforcement still holds without Claude Code: the compiler and CI are the
 backstop; the live in-session blocking is the Claude Code bonus.
 
 ## On Linux / Debian
