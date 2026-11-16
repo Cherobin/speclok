@@ -136,9 +136,12 @@ tool; if it is an agent straying into the wrong file, it is.
 
 Full methods, Wilson 95% intervals, and limitations: [`docs/benchmark.md`](docs/benchmark.md).
 
-> Measured on the speclok build from the benchmark run, before the enforcement hardening now in this
-> repo; the benchmark harness (fixture, tasks, prompts) is not committed here. Re-running against the
-> current build is an open item, so read these as the result for that earlier build.
+> **Re-measured on the current build.** After the six enforcement holes were closed (commit
+> `cfac4e1`), the speclok condition was re-run: **0 out-of-scope edits in 29 runs** (0.0% [0-11.7]),
+> correctness unchanged at 82.8%. The table above is the original 210-run benchmark (speclok at
+> 3.3%); the other conditions are unchanged. Tokens are not directly comparable for the re-run (the
+> hardened build needs a git workspace). Full re-measurement and caveats:
+> [`docs/benchmark.md`](docs/benchmark.md).
 
 ### When to use it
 

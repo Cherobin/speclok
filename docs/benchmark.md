@@ -3,7 +3,9 @@
 Across 210 runs, the current speclok build edits an out-of-scope file in **3.3%** of runs
 (95% CI 0.6-16.7); every other setup does so in 77-100%, their confidence intervals non-overlapping
 with it. Token cost is higher than an ungoverned agent but below every governed setup except
-spec-kit. No setup differs measurably in task correctness.
+spec-kit. No setup differs measurably in task correctness. After the benchmark the enforcement was
+hardened (commit `cfac4e1`) and the speclok condition re-measured at **0/29 out-of-scope**, correctness
+unchanged (see [Re-measurement](#re-measurement-the-hardened-build)).
 
 > Design: 7 conditions x 6 tasks x 5 repetitions = 210 runs. Agent: Claude Sonnet 5, headless.
 > All figures and statistics are computed directly from the raw data, committed here:
@@ -51,6 +53,29 @@ relative to the intervals, so it is not attributable to sampling noise at this n
 - **Correctness.** All seven intervals overlap heavily (~80-83%): **no setup measurably changes task
   correctness.** The cost buys scope discipline, not accuracy.
 
+## Re-measurement: the hardened build
+
+The "speclok (current)" row above is the build measured during the 210-run benchmark. After this repo
+closed six enforcement holes (commit `cfac4e1`), the speclok condition was re-run on the hardened
+build; the other conditions reuse the prior measurement, since only speclok changed.
+
+| | hardened build (`cfac4e1`) | prior build (table above) |
+|---|---|---|
+| out-of-scope edits | **0/29 = 0.0%** [0.0-11.7] | 3.3% [0.6-16.7] |
+| correctness (hidden) | 82.8% [65.5-92.4] | 80.0% [62.7-90.5] |
+
+The one scope slip is gone: zero out-of-scope edits across 29 runs, correctness unchanged. Raw data:
+[`benchmark-data/results-speclok-current.csv`](benchmark-data/results-speclok-current.csv).
+
+Two caveats, stated plainly:
+- **n=29, not 30.** One run (T01 rep 1) could not be reset on Windows (a file-lock on its git tree, a
+  harness/OS issue, not a speclok result); the other four T01 runs were clean.
+- **Tokens are not comparable, so they are left out here.** The hardened build needs a git work tree
+  (it reads scope from the `@Spec` committed at HEAD and tracks shell edits via `git status`), so this
+  re-run gave the workspace git, which the original benchmark did not. Its token median rose to
+  ~1044k, but that mixes stricter enforcement with the git-enabled environment and is not a clean
+  comparison to the rows above.
+
 ## Limitations
 
 - **Correctness is uninformative here.** Task T05 is solved by none of the seven (the agents fix a
@@ -67,10 +92,10 @@ relative to the intervals, so it is not attributable to sampling noise at this n
   specified Ubuntu 22.04 / JDK 17. Only portability patches were applied.
 - **Scope of generalization.** A single agent model and a single fixture family; results may not
   transfer to other models, languages, or task shapes.
-- **Version measured.** The figures are from the speclok build used in the benchmark run, which
-  predates the enforcement hardening now in the repo (the six closed holes). The harness itself
-  (fixture, tasks, prompts) is not committed here, so these numbers are not yet reproducible from
-  this repo and re-running against the current build is a known follow-up.
+- **The main table predates the hardening.** The "speclok (current)" row is the build measured during
+  the 210-run benchmark; the hardened build (`cfac4e1`) was re-measured separately (see Re-measurement
+  above): 0/29 out-of-scope, correctness unchanged. The harness itself (fixture, tasks, prompts) is
+  not committed here, so the per-run numbers are reproducible only from the committed CSVs.
 
 ## Reproduce it
 
