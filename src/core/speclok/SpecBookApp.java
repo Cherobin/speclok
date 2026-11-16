@@ -183,10 +183,14 @@ public class SpecBookApp {
 
 	static List<String> findAnnotations(String text, String name) {
 		List<String> out = new ArrayList<String>();
-		Matcher m = Pattern.compile("@" + Pattern.quote(name) + "\\s*\\(").matcher(text);
+		// Find the annotation in a view with comments AND literals blanked, so an "@Spec(" that sits
+		// in a comment or a string is never read as a real one; then take the body from a view with
+		// only the comments blanked (the member values are string literals). Both views keep offsets.
+		String code = SpecContextApp.blankJava(text), body = SpecContextApp.stripComments(text);
+		Matcher m = Pattern.compile("@" + Pattern.quote(name) + "\\s*\\(").matcher(code);
 		while (m.find()) {
-			int open = m.end() - 1, close = matchParen(text, open);
-			if (close != -1) out.add(text.substring(open + 1, close));
+			int open = m.end() - 1, close = matchParen(body, open);
+			if (close != -1) out.add(body.substring(open + 1, close));
 		}
 		return out;
 	}

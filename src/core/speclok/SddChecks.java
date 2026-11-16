@@ -55,7 +55,11 @@ final class SddChecks {
 		SpecBookApp.Spec s = SddCore.specForTask(taskId);
 		List<String> uncovered = new ArrayList<String>();
 		if (s == null) return uncovered;
-		String blob = allTestText();
+		// Look in the task's own test files first: another task's AC1_ test must not cover this
+		// task's AC1. Fall back to every test dir only when the scope names no test file (e.g. a
+		// build-tool project whose tests live elsewhere).
+		String blob = taskTestText(s);
+		if (blob == null) blob = allTestText();
 		for (String[] ac : s.acs) {
 			String cid = ac[0];
 			if (cid.isEmpty()) continue;
@@ -80,6 +84,24 @@ final class SddChecks {
 		return 0;
 	}
 
+	/** Text of the test files in the task's scope (comments and literals blanked, so an id that is
+	 * only mentioned does not count). {@code null} only if the scope names no test path at all; a
+	 * scope that names one which no longer exists yields "" (nothing covered), so deleting the test
+	 * file does not hand coverage over to some other task's tests. */
+	private static String taskTestText(SpecBookApp.Spec s) {
+		StringBuilder b = new StringBuilder();
+		List<String> scope = SddScope.locked(s);
+		boolean any = false;
+		for (String pattern : scope) if (SddCore.isTestPath(pattern)) { any = true; break; }
+		for (Path p : SddCore.resolveGlobs(scope)) {
+			if (!SddCore.isTest(p)) continue;
+			any = true;                                 // reached through a broad glob such as src/**
+			try { b.append(SpecContextApp.blankJava(new String(Files.readAllBytes(p), StandardCharsets.UTF_8))).append("\n"); }
+			catch (Exception ignore) {}
+		}
+		return any ? b.toString() : null;
+	}
+
 	private static String allTestText() {
 		StringBuilder b = new StringBuilder();
 		Path root = SddCore.repoRoot();
@@ -93,7 +115,10 @@ final class SddChecks {
 					boolean ok = false;
 					for (String ext : TEST_EXT) if (name.endsWith(ext)) { ok = true; break; }
 					if (!ok) continue;
-					try { b.append(new String(Files.readAllBytes(p), StandardCharsets.UTF_8)).append("\n"); }
+					try {
+						String t = new String(Files.readAllBytes(p), StandardCharsets.UTF_8);
+						b.append(name.endsWith(".java") ? SpecContextApp.blankJava(t) : t).append("\n");
+					}
 					catch (Exception ignore) {}
 				}
 			} catch (Exception ignore) {}
@@ -103,7 +128,28 @@ final class SddChecks {
 
 	// ---- scope-CI: the PR diff vs allowedFiles -------------------------
 
-	static int scopeCi(String base, List<String> taskIds) {
+	static int scopeCi(String base, List<String> taskIds) { return scopeCi(base, taskIds, false); }
+
+	/** @Spec scopes that this diff itself changes. scope-CI validates the diff against the scope as
+	 * it is at the tip, so a change that widens {@code allowedFiles} and then uses the new room
+	 * passes the file check - this is what puts the widening in front of the reviewer. */
+	private static List<String> scopeChangesInDiff(String base, List<String> changed) {
+		List<String> out = new ArrayList<String>();
+		String from = base;
+		try {
+			SddGates.Proc mb = SddGates.run(Arrays.asList("git", "merge-base", base, "HEAD"));
+			if (mb.code == 0 && !mb.outText.trim().isEmpty()) from = mb.outText.trim();
+		} catch (Exception ignore) {}
+		for (SpecBookApp.Spec s : SddCore.listSpecs()) {
+			if (!changed.contains(s.source)) continue;
+			List<String> before = SddScope.scopeAt(from, s.source);
+			if (before != null && !before.equals(s.allowedFiles))
+				out.add(s.id + " (" + s.source + "): " + before + " -> " + s.allowedFiles);
+		}
+		return out;
+	}
+
+	static int scopeCi(String base, List<String> taskIds, boolean strictScope) {
 		if (taskIds.isEmpty()) {
 			String active = SddCore.activeTaskId();
 			if (active != null) taskIds = java.util.Collections.singletonList(active);
@@ -131,6 +177,12 @@ final class SddChecks {
 			for (String f : offenders) System.out.println("  - " + f);
 			System.out.println("  allowed: " + globs);
 			return 1;
+		}
+		List<String> scopeChanges = scopeChangesInDiff(base, files);
+		if (!scopeChanges.isEmpty()) {
+			System.out.println((strictScope ? "✗" : "⚠") + " scope-CI: this diff changes allowedFiles - a human must approve the new scope:");
+			for (String c : scopeChanges) System.out.println("  - " + c);
+			if (strictScope) return 1;
 		}
 		System.out.println("✓ scope-CI: " + files.size() + " changed file(s), all within the scope of " + taskIds);
 		return 0;

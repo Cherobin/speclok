@@ -145,11 +145,12 @@ Full methods, Wilson 95% intervals, and limitations: [`docs/benchmark.md`](docs/
 Skip it if you are supervising every diff by hand, or if your goal is fewer tokens or higher
 correctness - the benchmark says it moves neither.
 
-## Quickstart (60 seconds, no build needed)
+## Quickstart (60 seconds)
 
-The prebuilt harness is in [`dist/speclok.jar`](dist/speclok.jar). Point it at the example:
+Build the jar once (JDK only, no other dependency), then point it at the example:
 
 ```bash
+bash build-sdd.sh          # produces speclok.jar and copies it into dist/ and example/lib/
 cd example
 
 # documentation, generated from the annotations
@@ -215,7 +216,7 @@ flowchart TD
     class T,M hl;
 ```
 
-## The pieces - `src/core/speclok/` (15 files, JDK-only)
+## The pieces - `src/core/speclok/` (17 files, JDK-only)
 
 | File(s) | Role |
 |---------|------|
@@ -225,7 +226,8 @@ flowchart TD
 | `SpecBookApp.java` | **Generate:** the Spec Book (constitution + every spec). |
 | `SpecContextApp.java` | **Generate:** the per-task agent briefing + the symbol→`file:line` context-pack. |
 | `SddApp.java` | The `sdd` command - one app dispatching every subcommand. |
-| `SddHooks.java` | **Enforce (agent time):** the `scope` / `compile` / `accept` hooks. |
+| `SddHooks.java` | **Enforce (agent time):** the `arm` / `scope` / `compile` / `accept` hooks. |
+| `SddScope.java` | The scope the hooks enforce: the `@Spec` committed at `HEAD` (not the working tree), plus the changed-files check behind the Stop gate. |
 | `SddGates.java` | The build + acceptance gates (internal `javac`, or your build tool). |
 | `SddChecks.java` | Validators + extensions: `trace` · `scopeci` · `docs` · `garden` · `observe` · `route` · `telemetry`. |
 | `SddOps.java` | The operations: `list` · `briefing` · `speclint` · `verify` · `scaffold`. |
@@ -238,8 +240,8 @@ flowchart TD
 One app, many subcommands - `java -jar speclok.jar sdd <cmd>`:
 
 ```
-hooks:       scope | compile | accept        (read the agent event on stdin; exit 2 blocks)
-validators:  trace <TASK> | scopeci [--base B] [TASK...] | docs
+hooks:       arm | scope | compile | accept  (read the agent event on stdin; exit 2 blocks)
+validators:  trace <TASK> | scopeci [--base B] [--strict-scope] [TASK...] | docs
 extensions:  garden | observe | route <TASK> | telemetry <log|report>
 operations:  list | briefing <TASK> | speclint <TASK> | verify <TASK> | scaffold
 server:      mcp                             (for .mcp.json)
@@ -287,7 +289,7 @@ artifact, and cross-file trace in the processor.
 
 ## Contributing
 
-The harness sources live under [`src/core/speclok/`](src/core/speclok/) (15 files, JDK-only). Build
+The harness sources live under [`src/core/speclok/`](src/core/speclok/) (17 files, JDK-only). Build
 with `bash build-sdd.sh`. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## License

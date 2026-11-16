@@ -33,7 +33,9 @@ import java.util.Map;
  * event JSON on stdin and signals the model through the exit code: {@code 2} blocks the edit / forces
  * the agent to keep going, {@code 0} lets it proceed / stop. These are the rules the model cannot
  * disobey - now a speclok app invoked by the harness ({@code java -jar speclok.jar sdd <hook>}).
- * Every hook fails open: a bug in the harness never wedges the agent.
+ * By default every hook fails open (a bug in the harness never wedges the agent); set
+ * {@code "failClosed": true} in {@code sdd.config.json} or {@code SDD_FAIL_CLOSED=1} for unattended
+ * runs, where an unverified edit is worse than a stuck one.
  */
 final class SddHooks {
 	private SddHooks() {}
@@ -48,6 +50,15 @@ final class SddHooks {
 			if (path.isEmpty()) return 0;              // tool with no path (e.g. Bash) - not ours
 
 			String rel = SddCore.relToRepo(path);
+
+			// Harness state (scope snapshots, baselines, counters) is never the agent's to edit. The
+			// one exception is the active-task pointer: the documented flow lets the agent arm a task
+			// from idle, so that file falls through to the normal rules below (writable with no task
+			// active; out of scope, hence blocked, once one is).
+			if (SddCore.pathAllowed(rel, SddScope.STATE) && !rel.equals(".sdd-state/current-task")) {
+				System.err.println("BLOCKED: " + rel + " is harness state - it is not part of any task.");
+				return 2;
+			}
 
 			// Protected-area policy (independent of the task scope): FORBIDDEN blocks the edit,
 			// RESTRICTED surfaces a checkpoint but lets it through.
@@ -68,6 +79,7 @@ final class SddHooks {
 				List<SpecBookApp.Spec> governing = SddCore.specsGoverning(rel);
 				if (governing.size() == 1) {
 					SddCore.writeActiveTask(governing.get(0).id);
+					SddScope.arm(governing.get(0));
 					SddCore.warn("auto-armed task " + governing.get(0).id + " (it governs " + rel + ").");
 					return 0;
 				}
@@ -79,15 +91,38 @@ final class SddHooks {
 					SddCore.warn("no active task; edit of '" + rel + "' allowed without scope check.");
 				return 0;
 			}
-			if (SddCore.pathAllowed(rel, task.allowedFiles)) return 0;
+			// Enforce the BASELINE scope (committed @Spec, or the snapshot taken when the task was
+			// armed) - not the working tree, which the agent can edit.
+			SddScope.arm(task);
+			List<String> allowed = SddScope.locked(task);
+			if (SddCore.pathAllowed(rel, allowed)) return 0;
+			if (SddCore.pathAllowed(rel, task.allowedFiles)) {
+				System.err.println("BLOCKED: " + rel + " is only in scope because allowedFiles of " + task.id
+					+ " was changed in the working tree. That change is not in force.\n"
+					+ "Approved scope: " + allowed + "\n"
+					+ "Widening the scope is a human decision: stop and ask. It takes effect once the @Spec "
+					+ "change is committed.");
+				return 2;
+			}
 			System.err.println("BLOCKED: " + rel + " is outside the scope of " + task.id + ".\n"
-				+ "Allowed: " + task.allowedFiles + "\n"
+				+ "Allowed: " + allowed + "\n"
 				+ "If the change is truly necessary, stop and ask to widen the manifest - don't edit outside.");
 			return 2;
 		} catch (Exception e) {
+			if (SddCore.failClosed()) {
+				System.err.println("BLOCKED: scope_guard failed (" + e + ") and failClosed is on.");
+				return 2;
+			}
 			SddCore.warn("scope_guard failed (" + e.getMessage() + "); edit allowed to be safe.");
 			return 0;
 		}
+	}
+
+	/** UserPromptSubmit: the turn starts here - remember what is already dirty, so the Stop gate only
+	 * reports what changed during the turn. Silent on purpose (this hook's stdout goes to the model). */
+	static int arm() {
+		try { SddScope.rebaseline(); } catch (Exception ignore) {}
+		return 0;
 	}
 
 	/** PostToolUse: compile after each edit; on failure return the first N error lines to the model.
@@ -123,9 +158,31 @@ final class SddHooks {
 
 	/** Stop: don't let the agent say "done" while any @AC test fails, with an iteration ceiling. */
 	static int accept(String stdin) {
+		int code = acceptGate(stdin);
+		if (code == 0) announceScopeChanges();
+		return code;
+	}
+
+	/** When the agent is allowed to stop while an {@code allowedFiles} edit sits uncommitted, tell the
+	 * human. The edit is not in force, but it becomes the scope the moment it is committed - so it
+	 * must not ride along unnoticed. Goes out as a hook {@code systemMessage} (shown to the user, not
+	 * fed to the model): a plain stderr warning on exit 0 is not displayed by Claude Code. */
+	private static void announceScopeChanges() {
+		try {
+			List<String> changed = SddScope.pendingScopeChanges();
+			if (changed.isEmpty()) return;
+			System.out.println(SddJson.write(SddJson.map("systemMessage",
+				"speclok: allowedFiles was edited and is NOT in force - " + String.join("; ", changed)
+				+ ". Committing this change approves the wider scope; review it (or revert it) first.")));
+		} catch (Exception ignore) {}
+	}
+
+	private static int acceptGate(String stdin) {
 		try {
 			Map<String, Object> evt = SddJson.obj(SddJson.parse(stdin.isEmpty() ? "{}" : stdin));
-			if (Boolean.TRUE.equals(evt.get("stop_hook_active"))) return 0;
+			// stop_hook_active is true on every Stop that follows a block. Returning 0 on it would let
+			// the agent through on its second attempt whatever the state, so the gate would only ever
+			// nudge once. The loop is bounded by maxIters below instead.
 
 			String taskId = SddCore.activeTaskId();
 			SpecBookApp.Spec task = SddCore.specForTask(taskId);
@@ -138,9 +195,43 @@ final class SddHooks {
 			int n = bumpIter(taskId);
 			if (n > maxIters) {
 				resetIter(taskId);
+				SddScope.rebaseline();
 				System.err.println("GATE: ceiling of " + maxIters + " iterations reached on " + taskId
 					+ " without passing all ACs. Stopping. Honestly report what's missing.");
 				return 0;                               // let it stop - honest failure
+			}
+
+			// 1. Scope, measured on the tree: anything that changed outside the baseline scope since the
+			//    task was armed blocks "done" - including what a shell command wrote, which the
+			//    PreToolUse hook never sees.
+			if (SddCore.cfgBool("stopScopeCheck")) {
+				SddScope.arm(task);
+				List<String> outside = SddScope.outOfScopeChanges(task);
+				if (outside == null) {
+					if (SddCore.failClosed()) {
+						System.err.println("Stop blocked - cannot check the scope (git status unavailable - not a git work tree?) and failClosed is on.");
+						return 2;
+					}
+					SddCore.warn("stop scope check skipped (git status unavailable - not a git work tree?).");
+				} else if (!outside.isEmpty()) {
+					System.err.println("Stop blocked - " + outside.size() + " file(s) changed outside the scope of "
+						+ taskId + " (iter " + n + "/" + maxIters + "): " + head(outside, 10) + "\n"
+						+ "Allowed: " + SddScope.locked(task) + "\n"
+						+ "If you made those changes, revert them (or stop and ask a human to widen the scope). "
+						+ "If you did not make them, leave them alone and say so.");
+					return 2;
+				}
+			}
+
+			// 2. Every criterion needs a test that carries its id - a gate that runs zero tests for an
+			//    @AC would otherwise pass it.
+			if (SddCore.cfgBool("requireTestPerAC")) {
+				List<String> untested = SddChecks.uncoveredCriteria(taskId);
+				if (!untested.isEmpty()) {
+					System.err.println("Stop blocked - no test for: " + untested + " (iter " + n + "/" + maxIters + "). "
+						+ "Name a test after each criterion (e.g. " + untested.get(0) + "_whatItChecks) and make it pass.");
+					return 2;
+				}
 			}
 
 			if (SddGates.hasTestCommand()) {
@@ -164,8 +255,13 @@ final class SddHooks {
 				}
 			}
 			resetIter(taskId);
+			SddScope.rebaseline();
 			return 0;
 		} catch (Exception e) {
+			if (SddCore.failClosed()) {
+				System.err.println("Stop blocked - acceptance_gate failed (" + e + ") and failClosed is on.");
+				return 2;
+			}
 			SddCore.warn("acceptance_gate failed (" + e.getMessage() + "); letting it stop to avoid wedging.");
 			return 0;
 		}
@@ -189,11 +285,17 @@ final class SddHooks {
 		try { Files.deleteIfExists(iterFile(taskId)); } catch (Exception ignore) {}
 	}
 
+	private static String head(List<String> xs, int n) {
+		return xs.size() <= n ? xs.toString() : xs.subList(0, n) + " (+" + (xs.size() - n) + " more)";
+	}
+
 	private static String firstNonEmpty(String... xs) {
 		for (String x : xs) if (x != null && !x.isEmpty()) return x;
 		return "";
 	}
 
+	private static final java.util.regex.Pattern PROTECTED_AT =
+		java.util.regex.Pattern.compile("@Protected\\b");
 	private static final java.util.regex.Pattern PROTECTED_TIER =
 		java.util.regex.Pattern.compile("@Protected\\s*\\([^)]*tier\\s*=\\s*\"([A-Za-z]+)\"");
 
@@ -205,8 +307,13 @@ final class SddHooks {
 			if (!java.nio.file.Files.exists(p)) return "";
 			String text = new String(java.nio.file.Files.readAllBytes(p), java.nio.charset.StandardCharsets.UTF_8);
 			if (!text.contains("@Protected")) return "";
-			java.util.regex.Matcher m = PROTECTED_TIER.matcher(text);
-			return m.find() ? m.group(1) : "RESTRICTED";   // @Protected with no tier -> default RESTRICTED
+			// Locate the annotation in real code only (comments and literals blanked), then read the
+			// tier from the same offset with the literals intact.
+			java.util.regex.Matcher at = PROTECTED_AT.matcher(SpecContextApp.blankJava(text));
+			if (!at.find()) return "";                     // only mentioned in a comment or a string
+			java.util.regex.Matcher m = PROTECTED_TIER.matcher(SpecContextApp.stripComments(text));
+			m.region(at.start(), text.length());
+			return m.lookingAt() ? m.group(1) : "RESTRICTED";   // @Protected with no tier -> default RESTRICTED
 		} catch (Exception e) {
 			return "";
 		}

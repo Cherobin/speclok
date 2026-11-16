@@ -4,6 +4,9 @@ A fresh Java project that **just adds speclok** (`lib/speclok.jar`) and gets the
 free: the spec becomes a `@Spec`/`@AC` annotation on the code, and speclok **generates** the docs,
 **enforces** the rules, and **serves** the tools to an AI agent.
 
+> Build the jar first: from the repo root, run `bash build-sdd.sh`. It produces `speclok.jar` and
+> copies it into `example/lib/` (the jar is a build artifact, not committed).
+
 ## The spec lives in the code
 
 `src/main/java/loja/Frete.java` carries the spec on the class and the method - there is no spec

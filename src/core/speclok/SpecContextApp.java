@@ -205,7 +205,13 @@ public class SpecContextApp {
 	}
 
 	/** Replaces the content of comments and literals with spaces, preserving line breaks and the `{}`. */
-	static String blankJava(String t) {
+	static String blankJava(String t) { return blank(t, true); }
+
+	/** Replaces only the comments with spaces (string/char literals stay intact). Same length as the
+	 * input, so an offset found in {@link #blankJava} points at the same spot here. */
+	static String stripComments(String t) { return blank(t, false); }
+
+	private static String blank(String t, boolean literals) {
 		StringBuilder out = new StringBuilder(t.length());
 		int i = 0, n = t.length(), mode = 0; // 0 none, 1 line, 2 block, 3 str, 4 char
 		while (i < n) {
@@ -225,9 +231,13 @@ public class SpecContextApp {
 				out.append(c == '\n' ? '\n' : ' '); i++;
 			} else {
 				char q = mode == 3 ? '"' : '\'';
-				if (c == '\\') { out.append("  "); i += 2; continue; }
+				if (c == '\\') {
+					if (literals) out.append(nx == '\0' ? " " : "  ");
+					else { out.append(c); if (nx != '\0') out.append(nx); }
+					i += 2; continue;
+				}
 				if (c == q) { mode = 0; out.append(q); i++; continue; }
-				out.append(c == '\n' ? '\n' : ' '); i++;
+				out.append(c == '\n' ? '\n' : (literals ? ' ' : c)); i++;
 			}
 		}
 		return out.toString();

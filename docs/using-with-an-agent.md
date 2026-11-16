@@ -104,6 +104,12 @@ echo "# idle" > .sdd-state/current-task  # back to rest (hooks go quiet)
 
 With no active task, the hooks stay quiet - speclok is invisible until you arm a task.
 
+The scope that is enforced is the one in the **committed** `@Spec` (for a brand-new spec: the one it
+had when the task was first armed). If a task needs more files than its committed `@Spec` allows,
+edit `allowedFiles` and commit that change yourself - the agent editing its own `allowedFiles` does
+not widen anything. And "done" is also refused while a file outside the scope has changed, whether an
+edit tool or a shell command wrote it, or while an `@AC` has no test named after it.
+
 ## 6. A typical session, end to end
 
 1. You describe the task in plain words.

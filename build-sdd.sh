@@ -28,4 +28,10 @@ speclok.SpecLintProcessor
 EOF
 
 jar --create --file speclok.jar --main-class speclok.Cli -C "$OUT" .
-echo "built $(pwd)/speclok.jar"
+
+# Place the built jar where the docs and the example expect it (both git-ignored - the jar is a
+# build artifact, not committed; run this script to produce it).
+mkdir -p dist example/lib
+cp speclok.jar dist/speclok.jar
+cp speclok.jar example/lib/speclok.jar
+echo "built $(pwd)/speclok.jar (copied to dist/ and example/lib/)"

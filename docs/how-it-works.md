@@ -29,10 +29,47 @@ Because these are generated, the docs can never drift from the code.
 - **Compile time** - `SpecLintProcessor` is a standard annotation processor. An incomplete `@Spec`
   (empty `objective`/`allowedFiles`, no `@AC`, a malformed id, an empty `given/when/then`)
   becomes a `javac` **error**, so it shows up red in the IDE. No agent required.
-- **Agent time** - three Claude Code hooks, run as `sdd` subcommands:
+- **Agent time** - four Claude Code hooks, run as `sdd` subcommands:
+  - `sdd arm` (UserPromptSubmit) records which files are already dirty when the turn starts.
   - `sdd scope` (PreToolUse) blocks an edit outside `allowedFiles` before it happens.
   - `sdd compile` (PostToolUse) fails the edit if it does not build.
-  - `sdd accept` (Stop) refuses "done" while any `@AC` test fails, with an iteration ceiling.
+  - `sdd accept` (Stop) refuses "done" while a file changed outside the scope, an `@AC` has no
+    test, or an `@AC` test fails - with an iteration ceiling.
+
+### What the gates cover, and what they do not
+
+The `@Spec` sits in a file the agent may edit, so the scope is **not** read from the working tree.
+The enforced scope is the `@Spec` committed at `HEAD` for that file; for a spec that is not committed
+yet, it is a snapshot taken the first time the harness sees the task (`.sdd-state/scope-<id>.lock`).
+An agent that edits its own `allowedFiles` gets a block that says so. Widening the scope is a human
+decision: commit the `@Spec` change (or delete the snapshot) and it takes effect.
+
+| Attempt | Caught by | When |
+|---|---|---|
+| Edit tool on a file outside the scope | `sdd scope` | before the edit |
+| Widening `allowedFiles` / bumping the id, then editing elsewhere | `sdd scope` (baseline scope) | before the edit |
+| Edit tool on `.sdd-state/**` (except arming a task from idle) | `sdd scope` | before the edit |
+| A shell command (`sed -i`, `echo >`, a generator) writing outside the scope | `sdd accept` (`git status` vs the scope) | at "done" |
+| Dropping or renaming the test of an `@AC`, or deleting the test file | `sdd accept` | at "done" |
+| An `@Spec` / `@Protected` that only appears in a comment or a string | ignored by the parser | - |
+
+An `allowedFiles` edit that is not in force is still sitting in the working tree, and committing it
+approves it. So it is surfaced twice: when the agent stops, the Stop hook shows the user a message
+naming the spec and the old and new scope; and `sdd scopeci` prints the same for any `allowedFiles`
+change in the diff under review (`--strict-scope` turns that into a failure).
+
+Not covered, by design or by limitation - say so rather than rely on it:
+
+- A shell edit is **detected at "done", not prevented**. The agent is told to revert it.
+- The Stop check needs a git work tree; outside one it is skipped (or blocks, with `failClosed`).
+- An agent that deliberately attacks the harness from the shell - rewriting `.sdd-state/`, or
+  running `git commit` to "approve" its own scope change - is not stopped here. Run `sdd scopeci`
+  in CI, where the diff (including any change to `allowedFiles`) is in front of a reviewer.
+- Hooks fail open by default, so a harness bug never wedges an interactive session. For unattended
+  runs set `"failClosed": true` in `sdd.config.json` (or `SDD_FAIL_CLOSED=1`).
+
+Config keys (all optional, in `sdd.config.json`): `scopeBaseline` (`"head"` | `"worktree"`),
+`stopScopeCheck`, `stopScopeIgnore` (globs, default build output), `requireTestPerAC`, `failClosed`.
 
 ```mermaid
 sequenceDiagram

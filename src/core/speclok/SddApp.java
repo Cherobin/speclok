@@ -51,6 +51,7 @@ public class SddApp {
 
 		switch (cmd) {
 			// ---- hooks (read the Claude Code event from stdin) ----
+			case "arm":     return SddHooks.arm();
 			case "scope":   return SddHooks.scope(SddCore.readStdin());
 			case "compile": return SddHooks.compile(SddCore.readStdin());
 			case "accept":  return SddHooks.accept(SddCore.readStdin());
@@ -92,11 +93,13 @@ public class SddApp {
 	private int scopeci(List<String> rest) {
 		String base = "origin/main";
 		List<String> tasks = new ArrayList<String>();
+		boolean strictScope = false;
 		for (int i = 0; i < rest.size(); i++) {
 			if ("--base".equals(rest.get(i)) && i + 1 < rest.size()) base = rest.get(++i);
+			else if ("--strict-scope".equals(rest.get(i))) strictScope = true;
 			else tasks.add(rest.get(i));
 		}
-		return SddChecks.scopeCi(base, tasks);
+		return SddChecks.scopeCi(base, tasks, strictScope);
 	}
 
 	private int telemetry(List<String> rest) {
@@ -198,6 +201,7 @@ public class SddApp {
 		List<String> wrote = new ArrayList<String>(), skipped = new ArrayList<String>();
 
 		Map<String, Object> settings = SddJson.map("hooks", SddJson.map(
+			"UserPromptSubmit", Arrays.asList(SddJson.map("hooks", Arrays.asList(cmdHook(jarRef, "arm")))),
 			"PreToolUse",  Arrays.asList(hookEntry("Edit|Write|MultiEdit|NotebookEdit", jarRef, "scope")),
 			"PostToolUse", Arrays.asList(hookEntry("Edit|Write|MultiEdit|NotebookEdit", jarRef, "compile")),
 			"Stop",        Arrays.asList(SddJson.map("hooks", Arrays.asList(cmdHook(jarRef, "accept"))))));
@@ -242,8 +246,8 @@ public class SddApp {
 	private void usage() {
 		System.err.println("usage: sdd <subcommand> [args]");
 		System.err.println("  setup:       init                            (bootstrap hooks + MCP + config for this project)");
-		System.err.println("  hooks:       scope | compile | accept        (read the Claude Code event on stdin)");
-		System.err.println("  validators:  trace <TASK> | scopeci [--base B] [TASK...] | docs");
+		System.err.println("  hooks:       arm | scope | compile | accept  (read the Claude Code event on stdin)");
+		System.err.println("  validators:  trace <TASK> | scopeci [--base B] [--strict-scope] [TASK...] | docs");
 		System.err.println("  extensions:  garden | observe | route <TASK> | telemetry <log|report> [flags]");
 		System.err.println("  operations:  list | briefing <TASK> | speclint <TASK> | verify <TASK> | scaffold (JSON on stdin)");
 		System.err.println("  server:      mcp                             (JSON-RPC stdio for .mcp.json)");

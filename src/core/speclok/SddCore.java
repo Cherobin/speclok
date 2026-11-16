@@ -141,6 +141,20 @@ final class SddCore {
 			"src/main/java",
 			"src/test/java")));
 		c.put("scopeGuardOnNoTask", "allow");     // allow | warn | block
+		// Where the enforced scope comes from: "head" = the @Spec committed at HEAD (or a snapshot for a
+		// spec not committed yet), so the agent cannot widen its own allowedFiles; "worktree" = whatever
+		// the file says right now (the old behavior).
+		c.put("scopeBaseline", "head");            // head | worktree
+		// Stop gate: block "done" while a file changed outside the scope, however it was written
+		// (catches shell edits the PreToolUse hook never sees). Needs a git work tree.
+		c.put("stopScopeCheck", Boolean.TRUE);
+		c.put("stopScopeIgnore", new ArrayList<String>(java.util.Arrays.asList(
+			"target/**", "build/**", "out/**", "**/*.class")));
+		// Stop gate: block "done" while an @AC has no test named after it.
+		c.put("requireTestPerAC", Boolean.TRUE);
+		// false = a harness failure lets the agent proceed (never wedge an interactive session);
+		// true  = a harness failure blocks (unattended / CI runs). Env SDD_FAIL_CLOSED=1 forces true.
+		c.put("failClosed", Boolean.FALSE);
 		c.put("maxErrorLines", Long.valueOf(3));
 		c.put("maxIters", Long.valueOf(5));
 		c.put("gardenerMaxFileLines", Long.valueOf(80));
@@ -163,6 +177,16 @@ final class SddCore {
 	}
 
 	static String cfgStr(String key) { return SddJson.str(config().get(key)); }
+	static boolean cfgBool(String key) {
+		Object v = config().get(key);
+		return Boolean.TRUE.equals(v) || "true".equalsIgnoreCase(SddJson.str(v).trim());
+	}
+	/** Whether a harness failure should block instead of letting the agent through. */
+	static boolean failClosed() {
+		String env = System.getenv("SDD_FAIL_CLOSED");
+		if (env != null && (env.equals("1") || env.equalsIgnoreCase("true"))) return true;
+		return cfgBool("failClosed");
+	}
 	static long cfgLong(String key, long dflt) { return SddJson.lng(config().get(key), dflt); }
 	static List<String> cfgList(String key) { return SddJson.strList(config().get(key)); }
 
@@ -202,7 +226,10 @@ final class SddCore {
 	static List<SpecBookApp.Spec> specsGoverning(String rel) {
 		List<SpecBookApp.Spec> out = new ArrayList<SpecBookApp.Spec>();
 		if (rel == null) return out;
-		for (SpecBookApp.Spec s : listSpecs()) if (pathAllowed(rel, s.allowedFiles)) out.add(s);
+		// Governing = by the baseline scope, not by what the working tree currently claims: a spec
+		// cannot make itself govern (and so unlock) a file by editing its own allowedFiles.
+		for (SpecBookApp.Spec s : listSpecs())
+			if (pathAllowed(rel, s.allowedFiles) && pathAllowed(rel, SddScope.locked(s))) out.add(s);
 		return out;
 	}
 
@@ -259,7 +286,15 @@ final class SddCore {
 		return out;
 	}
 
-	static boolean isTest(Path p) { return p.toString().replace('\\', '/').contains("/test/"); }
+	/** Test source? Decided on the repo-relative path, so a checkout that happens to live under a
+	 * directory called {@code test} does not turn every file into a test. */
+	static boolean isTest(Path p) {
+		String rel;
+		try { rel = repoRoot().relativize(p.toAbsolutePath().normalize()).toString(); }
+		catch (Exception e) { rel = p.toString(); }
+		return isTestPath(rel);
+	}
+	static boolean isTestPath(String rel) { return ("/" + rel.replace('\\', '/')).contains("/test/"); }
 
 	static List<Path> resolveGlobs(List<String> patterns) {
 		List<Path> out = new ArrayList<Path>();

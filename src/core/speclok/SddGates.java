@@ -78,7 +78,15 @@ final class SddGates {
 		}
 		Path[][] files = SddCore.taskJavaFiles(taskId);
 		Path[] main = files[0], test = files[1];
-		if (test.length == 0) return true;                // nothing to enforce
+		if (test.length == 0) {
+			// No test file in allowedFiles. With criteria declared that is a failure, not "nothing to
+			// enforce" - otherwise deleting the tests is the cheapest way to pass the gate.
+			SpecBookApp.Spec s = SddCore.specForTask(taskId);
+			if (s == null || s.acs.isEmpty()) return true;
+			out.append("no test file found in allowedFiles of ").append(taskId)
+				.append(" - its ").append(s.acs.size()).append(" @AC cannot be verified");
+			return false;
+		}
 		List<String> classes = SddCore.discoverTestClasses(test);
 		Path tmp = null;
 		try {
