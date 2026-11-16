@@ -6,16 +6,17 @@ example project. It is meant to be read, tried, and adopted in your own Java pro
 ## Layout
 
 ```
-src/core/speclok/         the 14 harness classes, in the `speclok` package
-dist/speclok.jar       prebuilt harness (JDK-only) so the example runs with no build
-build-sdd.sh              builds the jar - JDK only, no external dependencies
+src/core/speclok/         the harness classes, in the `speclok` package
+build-sdd.sh              builds speclok.jar (JDK only) into dist/ and example/lib/ (both git-ignored)
 example/                  a full project: @Spec/@AC, tests, config, and a brownfield fix (T-312)
 docs/                     how-it-works and the agent guides
 ```
 
+The jar is a build artifact, not committed: run `bash build-sdd.sh` to produce it.
+
 ## The source files
 
-All 14 files are plain Java, JDK-only (no external dependencies). They fall in four groups:
+Every file is plain Java, JDK-only (no external dependencies). They fall in four groups:
 
 - **Annotations** - `Spec`, `AC`, `ACs` (`@Retention(SOURCE)`, like the standard `@Override`).
 - **Generators** (CLI apps) - `SpecBookApp` (spec book), `SpecContextApp` (agent briefing).
@@ -27,7 +28,7 @@ All 14 files are plain Java, JDK-only (no external dependencies). They fall in f
 ## Building from source
 
 The build is JDK-only - there are no external dependencies. Run `build-sdd.sh` from the repo root to
-compile `src/core/speclok/*.java` and package `dist/speclok.jar`.
+compile `src/core/speclok/*.java` and package the jar into `dist/` and `example/lib/`.
 
 ## Style
 

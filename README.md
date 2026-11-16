@@ -249,8 +249,8 @@ server:      mcp                             (for .mcp.json)
 
 ## Using it in your project
 
-1. Put `speclok.jar` on your annotation-processor path (the prebuilt jar is in [`dist/`](dist/); or
-   build it with `bash build-sdd.sh`) and **enable annotation processing** in your build/IDE.
+1. Build `speclok.jar` with `bash build-sdd.sh` (JDK only), put it on your annotation-processor path,
+   and **enable annotation processing** in your build/IDE.
 2. Annotate the class/method you are changing with `@Spec`/`@AC`.
 3. Optional, for an AI agent: run `java -jar speclok.jar sdd init` to write the hooks
    (`.claude/settings.json`), the MCP server (`.mcp.json`) and a sensible `sdd.config.json` in one

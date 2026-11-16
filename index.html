@@ -296,11 +296,12 @@ docs/adr/0007.md     <span style="color:#8b97a8">why we chose it</span>
 <section id="start"><div class="wrap">
   <p class="eyebrow">quickstart</p>
   <h2>60 seconds, just a JDK</h2>
-  <p class="lead">The prebuilt harness ships in the repo. Point it at the example - no Maven, no build, Java 11+.</p>
+  <p class="lead">Clone, build the jar once (JDK only, no Maven), and point it at the example. Java 11+.</p>
   <div class="code">
     <div class="bar"><i></i><i></i><i></i></div>
-<pre><span class="cmt"># clone and enter the example</span>
-git clone https://github.com/Cherobin/speclok &amp;&amp; cd speclok/example
+<pre><span class="cmt"># clone and build the jar (lands in example/lib/)</span>
+git clone https://github.com/Cherobin/speclok &amp;&amp; cd speclok
+bash build-sdd.sh &amp;&amp; cd example
 
 <span class="cmt"># documentation, generated from the annotations</span>
 java -jar lib/speclok.jar specbook src/main/java -o SPECBOOK.md
