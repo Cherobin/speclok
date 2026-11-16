@@ -205,7 +205,9 @@ public class SddApp {
 			"PreToolUse",  Arrays.asList(hookEntry("Edit|Write|MultiEdit|NotebookEdit", jarRef, "scope")),
 			"PostToolUse", Arrays.asList(hookEntry("Edit|Write|MultiEdit|NotebookEdit", jarRef, "compile")),
 			"Stop",        Arrays.asList(SddJson.map("hooks", Arrays.asList(cmdHook(jarRef, "accept"))))));
-		writeIfAbsent(root.resolve(".claude").resolve("settings.json"), SddJson.write(settings), root, wrote, skipped);
+		java.nio.file.Path settingsFile = root.resolve(".claude").resolve("settings.json");
+		writeIfAbsent(settingsFile, SddJson.write(settings), root, wrote, skipped);
+		warnIfMissingArmHook(settingsFile, jarRef);
 
 		Map<String, Object> mcp = SddJson.map("mcpServers", SddJson.map("sdd",
 			SddJson.map("command", "java", "args", Arrays.asList("-jar", jarRef, "sdd", "mcp"))));
@@ -230,6 +232,27 @@ public class SddApp {
 	private static Map<String, Object> cmdHook(String jarRef, String sub) {
 		return SddJson.map("type", "command", "command", "java -jar \"" + jarRef + "\" sdd " + sub);
 	}
+	/** An existing settings.json from before the sdd arm hook keeps the weaker shell check (a turn that
+	 * changes files only through the shell is not caught at Stop). init never overwrites a user's file,
+	 * so when the hook is missing, point out the gap and print the exact block to add. No-op when the
+	 * file was just written (it already carries the hook) or already has it. */
+	private static void warnIfMissingArmHook(java.nio.file.Path settings, String jarRef) {
+		try {
+			if (!java.nio.file.Files.exists(settings)) return;
+			String text = new String(java.nio.file.Files.readAllBytes(settings), java.nio.charset.StandardCharsets.UTF_8);
+			if (text.contains("\"UserPromptSubmit\"") && text.contains("sdd arm")) return;
+			System.out.println();
+			System.out.println("WARNING: " + settings + " has no UserPromptSubmit 'sdd arm' hook.");
+			System.out.println("  Without it, a turn that changes files only through the shell is not checked against the");
+			System.out.println("  task scope at Stop. Add this entry to the \"hooks\" object, before \"PreToolUse\":");
+			System.out.println();
+			System.out.println("  \"UserPromptSubmit\": [{ \"hooks\": [{ \"type\": \"command\", \"command\": \"java -jar \\\"" + jarRef + "\\\" sdd arm\" }] }],");
+			System.out.println();
+		} catch (Exception e) {
+			SddCore.warn("init: could not check " + settings + " (" + e.getMessage() + ")");
+		}
+	}
+
 	private static void writeIfAbsent(java.nio.file.Path p, String content, java.nio.file.Path root,
 			List<String> wrote, List<String> skipped) {
 		try {

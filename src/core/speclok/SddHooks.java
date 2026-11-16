@@ -31,8 +31,9 @@ import java.util.Map;
 /**
  * The three Claude Code hooks, ported from {@code .sdd/hooks/*.py} into speclok. Each reads the hook
  * event JSON on stdin and signals the model through the exit code: {@code 2} blocks the edit / forces
- * the agent to keep going, {@code 0} lets it proceed / stop. These are the rules the model cannot
- * disobey - now a speclok app invoked by the harness ({@code java -jar speclok.jar sdd <hook>}).
+ * the agent to keep going, {@code 0} lets it proceed / stop. These are deterministic gates the
+ * harness enforces, not rules the prompt asks the model to follow - a speclok app invoked by the
+ * harness ({@code java -jar speclok.jar sdd <hook>}).
  * By default every hook fails open (a bug in the harness never wedges the agent); set
  * {@code "failClosed": true} in {@code sdd.config.json} or {@code SDD_FAIL_CLOSED=1} for unattended
  * runs, where an unverified edit is worse than a stuck one.
@@ -121,7 +122,11 @@ final class SddHooks {
 	/** UserPromptSubmit: the turn starts here - remember what is already dirty, so the Stop gate only
 	 * reports what changed during the turn. Silent on purpose (this hook's stdout goes to the model). */
 	static int arm() {
-		try { SddScope.rebaseline(); } catch (Exception ignore) {}
+		try {
+			SddScope.rebaseline();
+			String t = SddCore.activeTaskId();
+			if (t != null) resetIter(t);       // a new turn gets a fresh iteration budget
+		} catch (Exception ignore) {}
 		return 0;
 	}
 
@@ -190,6 +195,15 @@ final class SddHooks {
 			List<String> ids = new ArrayList<String>();
 			for (String[] ac : task.acs) if (!ac[0].isEmpty()) ids.add(ac[0]);
 			if (ids.isEmpty()) return 0;
+
+			// A pure conversation turn changes nothing since it started (the UserPromptSubmit baseline),
+			// so there is nothing to accept: let the agent answer and stop instead of re-running the @AC
+			// tests against unchanged, possibly-red state. Guarded by iter == 0 so a mid-task retry after
+			// a block (which also leaves the tree unchanged) is NOT mistaken for an idle turn: the sdd arm
+			// hook resets the iteration counter at the start of each turn, the gate only bumps it. Without
+			// the arm hook, changedSinceBaseline is null and the gate runs as before.
+			List<String> touchedThisTurn = SddScope.changedSinceBaseline();
+			if (touchedThisTurn != null && touchedThisTurn.isEmpty() && iterOf(taskId) == 0) return 0;
 
 			int maxIters = (int) SddCore.cfgLong("maxIters", 5);
 			int n = bumpIter(taskId);
@@ -270,6 +284,13 @@ final class SddHooks {
 	// ---- iteration state -----------------------------------------------------
 
 	private static Path iterFile(String taskId) { return SddCore.stateDir().resolve("iter-" + taskId); }
+
+	private static int iterOf(String taskId) {
+		Path f = iterFile(taskId);
+		try { if (Files.exists(f)) return Integer.parseInt(new String(Files.readAllBytes(f), StandardCharsets.UTF_8).trim()); }
+		catch (Exception ignore) {}
+		return 0;
+	}
 
 	private static int bumpIter(String taskId) {
 		Path f = iterFile(taskId);

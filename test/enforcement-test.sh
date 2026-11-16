@@ -165,6 +165,15 @@ stop;         expect 0 "changes made before the turn started are not blamed on i
 echo "// shell edit during the next turn, no edit tool involved" >> "$P/$CUPOM"
 stop;         expect 2 "a turn that only uses the shell is still checked" "$CUPOM"
 
+echo "stop gate: an idle conversation turn"
+project idleturn; task T-200
+replace $FRETE 'return Math.max(frete, 0);' 'return frete - 100;'   # AC1 now fails
+stop;         expect 2 "a turn that broke the @AC test blocks 'done'" "missing ACs: [AC1]"
+sdd arm                                        # a new turn starts: the red state becomes the baseline
+stop;         expect 0 "an idle follow-up turn (nothing changed) is not re-checked"
+echo "// a shell edit in this turn" >> "$P/$FRETE"
+stop;         expect 2 "but a turn that changes something is checked again" "[AC1]"
+
 project locale
 edit $FRETE
 mkdir -p "$P/docs novos" && echo x > "$P/docs novos/ação.md"

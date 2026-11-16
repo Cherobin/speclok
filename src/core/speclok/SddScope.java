@@ -164,6 +164,29 @@ final class SddScope {
 		return out;
 	}
 
+	/** Files whose content differs from the per-turn baseline, in or out of scope (harness state
+	 * excluded) - what this turn actually touched, by whatever means. {@code null} if there is no
+	 * baseline yet or git is unavailable (the caller cannot then assume the turn was idle); an empty
+	 * list means nothing changed since the turn started. */
+	static List<String> changedSinceBaseline() {
+		if (!Files.exists(baselineFile())) return null;
+		Map<String, String> dirty = dirtyFiles();
+		if (dirty == null) return null;
+		Map<String, String> before = new LinkedHashMap<String, String>();
+		for (String l : readLines(baselineFile())) {
+			int tab = l.indexOf('\t');
+			if (tab > 0) before.put(l.substring(tab + 1), l.substring(0, tab));
+		}
+		java.util.LinkedHashSet<String> changed = new java.util.LinkedHashSet<String>();
+		for (Map.Entry<String, String> e : dirty.entrySet()) {
+			if (SddCore.pathAllowed(e.getKey(), STATE)) continue;
+			if (!e.getValue().equals(before.get(e.getKey()))) changed.add(e.getKey());
+		}
+		for (String rel : before.keySet())                       // dirty at baseline, now gone (reverted or committed)
+			if (!dirty.containsKey(rel) && !SddCore.pathAllowed(rel, STATE)) changed.add(rel);
+		return new ArrayList<String>(changed);
+	}
+
 	/** Every modified, deleted or untracked file under the project root -> content hash. {@code null}
 	 * if this is not a git work tree. Paths are relative to the project root, POSIX separators. */
 	private static Map<String, String> dirtyFiles() {

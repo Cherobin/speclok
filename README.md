@@ -136,6 +136,10 @@ tool; if it is an agent straying into the wrong file, it is.
 
 Full methods, Wilson 95% intervals, and limitations: [`docs/benchmark.md`](docs/benchmark.md).
 
+> Measured on the speclok build from the benchmark run, before the enforcement hardening now in this
+> repo; the benchmark harness (fixture, tasks, prompts) is not committed here. Re-running against the
+> current build is an open item, so read these as the result for that earlier build.
+
 ### When to use it
 
 - A large or brownfield codebase with areas an agent must **not** touch (billing, auth, migrations).

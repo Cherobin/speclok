@@ -67,6 +67,10 @@ relative to the intervals, so it is not attributable to sampling noise at this n
   specified Ubuntu 22.04 / JDK 17. Only portability patches were applied.
 - **Scope of generalization.** A single agent model and a single fixture family; results may not
   transfer to other models, languages, or task shapes.
+- **Version measured.** The figures are from the speclok build used in the benchmark run, which
+  predates the enforcement hardening now in the repo (the six closed holes). The harness itself
+  (fixture, tasks, prompts) is not committed here, so these numbers are not yet reproducible from
+  this repo and re-running against the current build is a known follow-up.
 
 ## Reproduce it
 

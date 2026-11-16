@@ -1,0 +1,28 @@
+name: enforcement
+
+# Builds speclok.jar and runs the adversarial enforcement suite on Linux and Windows.
+# JDK only: no Maven, no external dependencies. The test harness is self-contained (git + bash).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build and run the enforcement suite
+        shell: bash
+        run: bash test/enforcement-test.sh
