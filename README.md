@@ -72,7 +72,7 @@ into a rule the compiler enforces.
   edit is blocked at write time, not caught in review.
 - **Too big to hold in context.** The agent gets only the slice it needs (the task briefing, over
   MCP) and is pinned to the declared scope, so it does not wander the other 2,000 files. That is the
-  one thing the benchmark shows cleanly: 0 out-of-scope edits in 30 runs vs 83-100% for the bare
+  one thing the benchmark shows cleanly: 0 out-of-scope edits in 30 runs vs 77-100% for the bare
   agent and the non-speclok tools.
 
 It is a seatbelt for an AI agent in a legacy codebase: the spec lives in the code, the compiler
@@ -122,17 +122,18 @@ current build (commit `c27ee3e`).
 
 | setup | out-of-scope edits (95% CI) | correctness | tokens, median |
 |---|---|---|---|
-| control (bare agent) | 83.3% [66.4-92.7] | ~83% | 354k |
-| spec-kit | 100% [88.6-100] | ~83% | 767k |
+| control (bare agent) | 80.0% [62.7-90.5] | ~83% | 354k |
+| spec-kit | 76.7% [59.1-88.2] | ~83% | 767k |
 | openspec | 100% [88.6-100] | ~83% | 930k |
-| speclok v1 (hooks only) | 20.0% [9.5-37.3] | ~70% | 1065k |
-| speclok v1 + MCP | 6.7% [1.8-21.3] | ~83% | 976k |
+| speclok v1 (hooks only) | 16.7% [7.3-33.6] | ~70% | 1065k |
+| speclok v1 + MCP | 3.3% [0.6-16.7] | ~83% | 976k |
 | **speclok (current build)** | **0.0% [0.0-11.4]** | **~80%** | 1009k |
 
 **What it buys: scope discipline.** The current speclok build touches an out-of-scope file in **0 of 30
-runs**; every non-speclok setup does so 83-100% of the time, and speclok's confidence interval does not
-overlap any of them. The three speclok builds also show the hardening working: **20% (hooks only) ->
-6.7% (+MCP) -> 0% (current)**.
+runs**; every non-speclok setup does so 77-100% of the time, and speclok's confidence interval does not
+overlap any of them. The three speclok builds also show the hardening working: **16.7% (hooks only) ->
+3.3% (+MCP) -> 0% (current)**. (Out-of-scope counts source edits outside the declared files; pure
+compiled build output is excluded.)
 
 **The git workspace matters.** speclok reads scope from the `@Spec` committed at HEAD and tracks shell
 edits via `git status`, so its Stop gate only works inside a git work tree. An earlier first-pass that

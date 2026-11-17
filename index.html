@@ -162,7 +162,7 @@
     </div>
     <div class="leak">
       <h3>Too big to hold in context</h3>
-      <p>The agent gets only the slice it needs - the task briefing, over MCP - and is pinned to the declared scope, so it does not wander the other 2,000 files. The benchmark shows it: 0 out-of-scope edits in 30 runs vs 83-100%.</p>
+      <p>The agent gets only the slice it needs - the task briefing, over MCP - and is pinned to the declared scope, so it does not wander the other 2,000 files. The benchmark shows it: 0 out-of-scope edits in 30 runs vs 77-100%.</p>
     </div>
   </div>
   <p style="color:var(--muted);font-size:.95rem;margin-top:18px">It does not make the agent smarter - correctness is flat in the benchmark. It makes it <b style="color:var(--ink)">confinable</b>: you do not wake up to a commit in <code>PaymentProcessor.java</code> that nobody asked for.</p>
@@ -252,21 +252,21 @@ docs/adr/0007.md     <span style="color:#8b97a8">why we chose it</span>
 <section id="proof"><div class="wrap">
   <p class="eyebrow">benchmark-driven</p>
   <h2>Fewer wrong edits - measured, not claimed</h2>
-  <p class="lead">A benchmark of 6 setups on the same Java brownfield tasks (Claude Sonnet 5), every setup in a git workspace, at n=30 each. The current speclok build edits an out-of-scope file in 0 of 30 runs; every non-speclok setup does so 83-100% of the time.</p>
+  <p class="lead">A benchmark of 6 setups on the same Java brownfield tasks (Claude Sonnet 5), every setup in a git workspace, at n=30 each. The current speclok build edits an out-of-scope file in 0 of 30 runs; every non-speclok setup does so 77-100% of the time.</p>
   <div class="stats">
     <div class="statt"><div class="sv" style="color:var(--accent)">0/30</div><div class="sk">speclok runs touched an out-of-scope file</div></div>
-    <div class="statt"><div class="sv">83-100%</div><div class="sk">for every non-speclok setup - bare agent included</div></div>
-    <div class="statt"><div class="sv">20&rarr;6.7&rarr;0%</div><div class="sk">out-of-scope as speclok hardened (hooks &rarr; +MCP &rarr; current)</div></div>
+    <div class="statt"><div class="sv">77-100%</div><div class="sk">for every non-speclok setup - bare agent included</div></div>
+    <div class="statt"><div class="sv">16.7&rarr;3.3&rarr;0%</div><div class="sk">out-of-scope as speclok hardened (hooks &rarr; +MCP &rarr; current)</div></div>
   </div>
   <div class="btab-wrap">
     <table class="btab">
       <thead><tr><th>setup</th><th>out-of-scope edits (95% CI)</th><th>correctness</th><th>tokens, median</th></tr></thead>
       <tbody>
-        <tr><td>control (bare agent)</td><td>83.3% <span class="ci">[66.4-92.7]</span></td><td>~83%</td><td>354k</td></tr>
-        <tr><td>spec-kit</td><td>100% <span class="ci">[88.6-100]</span></td><td>~83%</td><td>767k</td></tr>
+        <tr><td>control (bare agent)</td><td>80.0% <span class="ci">[62.7-90.5]</span></td><td>~83%</td><td>354k</td></tr>
+        <tr><td>spec-kit</td><td>76.7% <span class="ci">[59.1-88.2]</span></td><td>~83%</td><td>767k</td></tr>
         <tr><td>openspec</td><td>100% <span class="ci">[88.6-100]</span></td><td>~83%</td><td>930k</td></tr>
-        <tr><td>speclok v1 (hooks only)</td><td>20.0% <span class="ci">[9.5-37.3]</span></td><td>~70%</td><td>1065k</td></tr>
-        <tr><td>speclok v1 + MCP</td><td>6.7% <span class="ci">[1.8-21.3]</span></td><td>~83%</td><td>976k</td></tr>
+        <tr><td>speclok v1 (hooks only)</td><td>16.7% <span class="ci">[7.3-33.6]</span></td><td>~70%</td><td>1065k</td></tr>
+        <tr><td>speclok v1 + MCP</td><td>3.3% <span class="ci">[0.6-16.7]</span></td><td>~83%</td><td>976k</td></tr>
         <tr class="me"><td>speclok (current build)</td><td>0.0% <span class="ci">[0.0-11.4]</span></td><td>~80%</td><td>1009k</td></tr>
       </tbody>
     </table>

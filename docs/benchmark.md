@@ -2,9 +2,9 @@
 
 Re-measured on the current build (commit `c27ee3e`) with **every setup running in a git workspace** -
 which speclok's Stop gate requires - at **n=30 per setup**: the current speclok build edits an
-out-of-scope file in **0 of 30 runs** (95% CI 0.0-11.4); every non-speclok setup does so in 83-100%,
+out-of-scope file in **0 of 30 runs** (95% CI 0.0-11.4); every non-speclok setup does so in 77-100%,
 their confidence intervals non-overlapping with it. The three speclok builds trace the hardening:
-20% (hooks only) -> 6.7% (+MCP) -> 0% (current). No setup differs measurably in task correctness
+16.7% (hooks only) -> 3.3% (+MCP) -> 0% (current). No setup differs measurably in task correctness
 (~70-83%, intervals overlap). Governance costs tokens (~3x the ungoverned agent); in the git
 environment speclok is among the more token-heavy governed setups, not the cheapest.
 
@@ -19,7 +19,7 @@ environment speclok is among the more token-heavy governed setups, not the cheap
 |---|---|
 | **Setups** | control (bare agent), spec-kit, openspec, and three speclok builds: v1 (hooks only), v1 +MCP, and the current build. Every setup runs inside a git work tree. |
 | **Fixture** | one Java brownfield project; 6 tasks (T01-T06); hidden tests the agent never sees. |
-| **Primary outcome** | **out-of-scope edit rate** = share of runs that changed a file outside the task's declared allowed set. |
+| **Primary outcome** | **out-of-scope edit rate** = share of runs that changed a file outside the task's declared allowed set. Pure compiled build output (`.class` files and `build/`, `out/`, `bin/`, `target/`, … directories) is excluded - it is a compile byproduct, not an edit. |
 | **Secondary** | correctness (hidden-test pass), input-token cost. |
 | **Statistics** | proportions as 95% Wilson score intervals (n=30 per setup, z=1.96); token cost as median input tokens. Every figure is recomputed directly from the committed CSV. |
 
@@ -27,18 +27,18 @@ environment speclok is among the more token-heavy governed setups, not the cheap
 
 | setup | out-of-scope (95% CI) | correctness (95% CI) | tokens, median |
 |---|---|---|---|
-| control (bare agent) | 83.3% [66.4-92.7] | 83.3% [66.4-92.7] | 354k |
-| spec-kit | 100% [88.6-100] | 83.3% [66.4-92.7] | 767k |
+| control (bare agent) | 80.0% [62.7-90.5] | 83.3% [66.4-92.7] | 354k |
+| spec-kit | 76.7% [59.1-88.2] | 83.3% [66.4-92.7] | 767k |
 | openspec | 100% [88.6-100] | 83.3% [66.4-92.7] | 930k |
-| speclok v1 (hooks only) | 20.0% [9.5-37.3] | 70.0% [52.1-83.3] | 1065k |
-| speclok v1 + MCP | 6.7% [1.8-21.3] | 83.3% [66.4-92.7] | 976k |
+| speclok v1 (hooks only) | 16.7% [7.3-33.6] | 70.0% [52.1-83.3] | 1065k |
+| speclok v1 + MCP | 3.3% [0.6-16.7] | 83.3% [66.4-92.7] | 976k |
 | **speclok (current build)** | **0.0% [0.0-11.4]** | **80.0% [62.7-90.5]** | 1009k |
 
 ## Interpretation
 
 - **Scope.** The current speclok build is the only setup with 0 out-of-scope edits; its 95% interval
-  [0-11.4%] does not overlap any non-speclok setup (83-100%). The three speclok builds trace the
-  hardening cleanly: hooks-only 20% -> +MCP 6.7% -> current 0%.
+  [0-11.4%] does not overlap any non-speclok setup (77-100%). The three speclok builds trace the
+  hardening cleanly: hooks-only 16.7% -> +MCP 3.3% -> current 0%.
 - **The git workspace is load-bearing for speclok.** speclok reads scope from the `@Spec` committed at
   HEAD and tracks shell edits via `git status`; without a git work tree its Stop gate cannot catch an
   out-of-scope change that a shell command wrote or that the agent committed. An earlier first-pass
