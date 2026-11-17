@@ -72,7 +72,8 @@ into a rule the compiler enforces.
   edit is blocked at write time, not caught in review.
 - **Too big to hold in context.** The agent gets only the slice it needs (the task briefing, over
   MCP) and is pinned to the declared scope, so it does not wander the other 2,000 files. That is the
-  one thing the benchmark shows cleanly: 3.3% out-of-scope edits vs 77-100% for every other setup.
+  one thing the benchmark shows cleanly: 0 out-of-scope edits in 30 runs vs 83-100% for the bare
+  agent and the non-speclok tools.
 
 It is a seatbelt for an AI agent in a legacy codebase: the spec lives in the code, the compiler
 enforces it, and the agent cannot edit where you did not let it. It does not make the agent smarter
@@ -114,34 +115,38 @@ the per-symbol contract that used to rot in markdown.)
 
 ## Results (measured, not claimed)
 
-A 210-run benchmark - 7 setups, the same Java brownfield tasks, Claude Sonnet 5, hidden tests the
-agent never sees - measured how often each setup edits a file **outside the declared scope**.
+A benchmark of **6 setups** on the same Java brownfield tasks (Claude Sonnet 5, hidden tests the agent
+never sees) measures how often each setup edits a file **outside the declared scope**. Every setup
+runs **in a git workspace** - which speclok's Stop gate requires - at **n=30** per setup, on the
+current build (commit `c27ee3e`).
 
 | setup | out-of-scope edits (95% CI) | correctness | tokens, median |
 |---|---|---|---|
-| control (bare agent) | 93.3% [78.7-98.2] | ~83% | 313k |
-| spec-kit | 100% [88.6-100] | ~80% | 803k |
-| openspec | 96.7% [83.3-99.4] | ~83% | 951k |
-| SDD best-practice | 80.0% [62.7-90.5] | ~83% | 1040k |
-| **speclok** | **3.3% [0.6-16.7]** | **~80%** | **861k** |
+| control (bare agent) | 83.3% [66.4-92.7] | ~83% | 354k |
+| spec-kit | 100% [88.6-100] | ~83% | 767k |
+| openspec | 100% [88.6-100] | ~83% | 930k |
+| speclok v1 (hooks only) | 20.0% [9.5-37.3] | ~70% | 1065k |
+| speclok v1 + MCP | 6.7% [1.8-21.3] | ~83% | 976k |
+| **speclok (current build)** | **0.0% [0.0-11.4]** | **~80%** | 1009k |
 
-**What it buys: scope discipline.** speclok touches an out-of-scope file in 3.3% of runs; every other
-setup does so 77-100% of the time, and its confidence interval does not overlap any of them. That is
-the one strong, clean effect in the data.
+**What it buys: scope discipline.** The current speclok build touches an out-of-scope file in **0 of 30
+runs**; every non-speclok setup does so 83-100% of the time, and speclok's confidence interval does not
+overlap any of them. The three speclok builds also show the hardening working: **20% (hooks only) ->
+6.7% (+MCP) -> 0% (current)**.
 
-**What it does not buy.** Correctness is flat (~80-83%) across *all* setups - the gates keep the agent
-in its lane, they do not make it smarter. And governance costs tokens: ~2.7x the bare agent (though
-speclok is cheaper than every governed setup except spec-kit). If your pain is cost or accuracy, this is not the
-tool; if it is an agent straying into the wrong file, it is.
+**The git workspace matters.** speclok reads scope from the `@Spec` committed at HEAD and tracks shell
+edits via `git status`, so its Stop gate only works inside a git work tree. An earlier first-pass that
+ran the speclok conditions *without* a git workspace put the earlier builds much higher; the
+apples-to-apples table above runs every setup in git.
 
-Full methods, Wilson 95% intervals, and limitations: [`docs/benchmark.md`](docs/benchmark.md).
+**What it does not buy.** Correctness is roughly flat (~70-83%, intervals overlap) - the gates keep the
+agent in its lane, they do not make it smarter. And governance costs tokens (~3x the bare agent); in
+the git environment the current speclok build is among the *more* token-heavy governed setups, not the
+cheapest. If your pain is cost or accuracy, this is not the tool; if it is an agent straying into the
+wrong file, it is.
 
-> **Re-measured on the current build.** After the six enforcement holes were closed (commit
-> `cfac4e1`), the speclok condition was re-run: **0 out-of-scope edits in 29 runs** (0.0% [0-11.7]),
-> correctness unchanged at 82.8%. The table above is the original 210-run benchmark (speclok at
-> 3.3%); the other conditions are unchanged. Tokens are not directly comparable for the re-run (the
-> hardened build needs a git workspace). Full re-measurement and caveats:
-> [`docs/benchmark.md`](docs/benchmark.md).
+Full methods, Wilson 95% intervals, and limitations (the run was on Windows / JDK 21, and some cells
+needed re-running due to a Windows harness file-locking issue): [`docs/benchmark.md`](docs/benchmark.md).
 
 ### When to use it
 

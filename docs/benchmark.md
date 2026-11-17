@@ -1,125 +1,96 @@
 # speclok benchmark - results
 
-Across 210 runs, the current speclok build edits an out-of-scope file in **3.3%** of runs
-(95% CI 0.6-16.7); every other setup does so in 77-100%, their confidence intervals non-overlapping
-with it. Token cost is higher than an ungoverned agent but below every governed setup except
-spec-kit. No setup differs measurably in task correctness. After the benchmark the enforcement was
-hardened (commit `cfac4e1`) and the speclok condition re-measured at **0/29 out-of-scope**, correctness
-unchanged (see [Re-measurement](#re-measurement-the-hardened-build)).
+Re-measured on the current build (commit `c27ee3e`) with **every setup running in a git workspace** -
+which speclok's Stop gate requires - at **n=30 per setup**: the current speclok build edits an
+out-of-scope file in **0 of 30 runs** (95% CI 0.0-11.4); every non-speclok setup does so in 83-100%,
+their confidence intervals non-overlapping with it. The three speclok builds trace the hardening:
+20% (hooks only) -> 6.7% (+MCP) -> 0% (current). No setup differs measurably in task correctness
+(~70-83%, intervals overlap). Governance costs tokens (~3x the ungoverned agent); in the git
+environment speclok is among the more token-heavy governed setups, not the cheapest.
 
-> Design: 7 conditions x 6 tasks x 5 repetitions = 210 runs. Agent: Claude Sonnet 5, headless.
-> All figures and statistics are computed directly from the raw data, committed here:
-> [`benchmark-data/results.csv`](benchmark-data/results.csv) (one row per run) and
-> [`benchmark-data/summary.csv`](benchmark-data/summary.csv) (per-condition rates).
+> Design: 6 setups x 6 tasks x 5 repetitions = 180 runs on the current build, all in a git workspace.
+> Agent: Claude Sonnet 5, headless. All figures are computed directly from the raw data, committed
+> here: [`benchmark-data/results-rerun-git-n30.csv`](benchmark-data/results-rerun-git-n30.csv) (one
+> row per run).
 
 ## Methods
 
 | | |
 |---|---|
-| **Conditions** | control (bare agent), spec-kit, openspec, SDD best-practice (full-governance framework), and three speclok builds: v1 (hooks), v1 +MCP, and the current build. |
+| **Setups** | control (bare agent), spec-kit, openspec, and three speclok builds: v1 (hooks only), v1 +MCP, and the current build. Every setup runs inside a git work tree. |
 | **Fixture** | one Java brownfield project; 6 tasks (T01-T06); hidden tests the agent never sees. |
 | **Primary outcome** | **out-of-scope edit rate** = share of runs that changed a file outside the task's declared allowed set. |
 | **Secondary** | correctness (hidden-test pass), input-token cost. |
-| **Statistics** | proportions as 95% Wilson score intervals (n=30 per condition, z=1.96); token cost as median [Q1-Q3] input tokens (right-skewed, so not the mean; inclusive quartiles). Every figure is recomputed directly from `results.csv`. |
+| **Statistics** | proportions as 95% Wilson score intervals (n=30 per setup, z=1.96); token cost as median input tokens. Every figure is recomputed directly from the committed CSV. |
 
-## Primary outcome - out-of-scope edits
+## Results
 
-<p align="center"><img src="benchmark-primary.svg" width="700" alt="Out-of-scope edit rate by condition with 95% confidence intervals; the current speclok build sits at 3.3% with its interval non-overlapping all others."></p>
-
-Dot = point estimate; bar = 95% Wilson interval. The current speclok build's interval (0.6-16.7%)
-does not overlap any other condition's, including the other speclok builds. The separation is large
-relative to the intervals, so it is not attributable to sampling noise at this n.
-
-## All metrics
-
-| condition | out-of-scope (95% CI) | correctness (95% CI) | tokens, median [Q1-Q3] |
+| setup | out-of-scope (95% CI) | correctness (95% CI) | tokens, median |
 |---|---|---|---|
-| control (bare) | 93.3% [78.7-98.2] | 83.3% [66.4-92.7] | 313k [299-386] |
-| spec-kit | 100% [88.6-100] | 80.0% [62.7-90.5] | 803k [687-935] |
-| openspec | 96.7% [83.3-99.4] | 83.3% [66.4-92.7] | 951k [817-1191] |
-| SDD best-practice | 80.0% [62.7-90.5] | 83.3% [66.4-92.7] | 1040k [850-1191] |
-| speclok v1 (hooks) | 83.3% [66.4-92.7] | 83.3% [66.4-92.7] | 932k [802-2091] |
-| speclok v1 +MCP | 76.7% [59.1-88.2] | 83.3% [66.4-92.7] | 950k [757-1473] |
-| **speclok (current)** | **3.3% [0.6-16.7]** | **80.0% [62.7-90.5]** | **861k [724-1075]** |
+| control (bare agent) | 83.3% [66.4-92.7] | 83.3% [66.4-92.7] | 354k |
+| spec-kit | 100% [88.6-100] | 83.3% [66.4-92.7] | 767k |
+| openspec | 100% [88.6-100] | 83.3% [66.4-92.7] | 930k |
+| speclok v1 (hooks only) | 20.0% [9.5-37.3] | 70.0% [52.1-83.3] | 1065k |
+| speclok v1 + MCP | 6.7% [1.8-21.3] | 83.3% [66.4-92.7] | 976k |
+| **speclok (current build)** | **0.0% [0.0-11.4]** | **80.0% [62.7-90.5]** | 1009k |
 
 ## Interpretation
 
-- **Scope.** The current build is the only setup whose 95% interval sits well below the rest, and the
-  intervals do not overlap - the effect is not sampling noise at this n.
-- **Cost.** The governed setups all run 2.5-3.3x the ungoverned baseline's median tokens - the price
-  of a spec-driven, gated process. Among them the current speclok build is **second-cheapest** (861k,
-  below every governed setup except spec-kit's 803k); the earlier hooks-only build had the widest
-  spread (Q3 reaching 2.1M), a pathology since removed.
-- **Correctness.** All seven intervals overlap heavily (~80-83%): **no setup measurably changes task
-  correctness.** The cost buys scope discipline, not accuracy.
-
-## Re-measurement: the hardened build
-
-The "speclok (current)" row above is the build measured during the 210-run benchmark. After this repo
-closed six enforcement holes (commit `cfac4e1`), the speclok condition was re-run on the hardened
-build; the other conditions reuse the prior measurement, since only speclok changed.
-
-| | hardened build (`cfac4e1`) | prior build (table above) |
-|---|---|---|
-| out-of-scope edits | **0/29 = 0.0%** [0.0-11.7] | 3.3% [0.6-16.7] |
-| correctness (hidden) | 82.8% [65.5-92.4] | 80.0% [62.7-90.5] |
-
-The one scope slip is gone: zero out-of-scope edits across 29 runs, correctness unchanged. Raw data:
-[`benchmark-data/results-speclok-current.csv`](benchmark-data/results-speclok-current.csv).
-
-Two caveats, stated plainly:
-- **n=29, not 30.** One run (T01 rep 1) could not be reset on Windows (a file-lock on its git tree, a
-  harness/OS issue, not a speclok result); the other four T01 runs were clean.
-- **Tokens are not comparable, so they are left out here.** The hardened build needs a git work tree
-  (it reads scope from the `@Spec` committed at HEAD and tracks shell edits via `git status`), so this
-  re-run gave the workspace git, which the original benchmark did not. Its token median rose to
-  ~1044k, but that mixes stricter enforcement with the git-enabled environment and is not a clean
-  comparison to the rows above.
+- **Scope.** The current speclok build is the only setup with 0 out-of-scope edits; its 95% interval
+  [0-11.4%] does not overlap any non-speclok setup (83-100%). The three speclok builds trace the
+  hardening cleanly: hooks-only 20% -> +MCP 6.7% -> current 0%.
+- **The git workspace is load-bearing for speclok.** speclok reads scope from the `@Spec` committed at
+  HEAD and tracks shell edits via `git status`; without a git work tree its Stop gate cannot catch an
+  out-of-scope change that a shell command wrote or that the agent committed. An earlier first-pass
+  that ran the speclok conditions *without* git put the earlier builds far higher. This run puts every
+  setup in a git workspace, so the comparison is apples-to-apples.
+- **Correctness.** Roughly flat (~70-83%, intervals overlap): the gates keep the agent in its lane,
+  they do not make it smarter.
+- **Cost.** The governed setups run ~3x the bare agent's median tokens. The current speclok build
+  (1009k) is on the heavier end of the governed setups, not the cheapest - a correction to an earlier,
+  non-git measurement that read it as second-cheapest.
 
 ## Limitations
 
-- **Correctness is uninformative here.** Task T05 is solved by none of the seven (the agents fix a
-  rounding bug but miss the hidden negative-value test), capping every condition's correctness.
-- **Small per-cell n.** 5 repetitions per task; condition-level n=30. Intervals are wide for the
-  mid-range conditions - treat their ordering as indistinct.
-- **One outcome value had a known artifact.** The current build's 80% correctness reflects a single
-  run that broke compile on a malformed `@AC` id; that specific failure is fixed, which would return
-  it to the ~83% shared by the rest.
-- **Outcome definition.** "out-of-scope" counts any changed file outside the task's allowed set; one
-  current-build run's count included a harness state file (an active-task pointer) - a
-  near-false-positive, not a code change.
-- **Environment deviates from the protocol.** Runs executed on Windows 11 / JDK 21; the pins
-  specified Ubuntu 22.04 / JDK 17. Only portability patches were applied.
+- **Environment deviates from the original protocol.** This run executed on Windows 11 / JDK 21; the
+  original pins specified Ubuntu 22.04 / JDK 17. Only portability patches were applied.
+- **Harness flakiness required re-runs.** On Windows, parallel execution left 51 of the 180 cells
+  blocked at setup (git-init / tool-bootstrap aborting under concurrent load, *before* the agent ran).
+  Each was cleared and re-run until it completed, so the final table has n=30 valid runs for every
+  setup. Because the blocks happen before the agent acts, re-running them does not bias the
+  out-of-scope outcome.
+- **Small per-cell n.** 5 repetitions per task; setup-level n=30. Intervals are wide for the mid-range
+  setups - treat their ordering as indistinct.
 - **Scope of generalization.** A single agent model and a single fixture family; results may not
   transfer to other models, languages, or task shapes.
-- **The main table predates the hardening.** The "speclok (current)" row is the build measured during
-  the 210-run benchmark; the hardened build (`cfac4e1`) was re-measured separately (see Re-measurement
-  above): 0/29 out-of-scope, correctness unchanged. The harness itself (fixture, tasks, prompts) is
-  not committed here, so the per-run numbers are reproducible only from the committed CSVs.
+- **The harness is not committed here** (fixture, tasks, prompts), so the per-run numbers are
+  reproducible only from the committed CSV.
 
 ## Reproduce it
 
-Every number above comes from [`benchmark-data/results.csv`](benchmark-data/results.csv). The
-condition column maps to the labels as: `control`, `spec-kit`, `openspec`, `sdd-eld` (SDD
-best-practice), `speclok` (v1 hooks), `speclok-mcp` (v1 +MCP), `speclok-v2` (current). Out-of-scope =
-`forbidden_files_changed`; correctness = `hidden_tests_pass`; tokens = `input_tokens`.
+Every number above comes from
+[`benchmark-data/results-rerun-git-n30.csv`](benchmark-data/results-rerun-git-n30.csv). The condition
+column maps to the labels as: `control`, `spec-kit`, `openspec`, `speclok` (v1 hooks), `speclok-mcp`
+(v1 +MCP), `speclok-v2` (current). Out-of-scope = `forbidden_files_changed`; correctness =
+`hidden_tests_pass`; tokens = `input_tokens`.
 
 ```python
 import csv, math, statistics as st
-rows = list(csv.DictReader(open("docs/benchmark-data/results.csv", encoding="utf-8")))
+rows = list(csv.DictReader(open("docs/benchmark-data/results-rerun-git-n30.csv", encoding="utf-8")))
 def wilson(k, n, z=1.96):
     p = k / n; c = (p + z*z/(2*n)) / (1 + z*z/n)
     h = z*math.sqrt(p*(1-p)/n + z*z/(4*n*n)) / (1 + z*z/n)
-    return round(p*100,1), round((c-h)*100,1), round((c+h)*100,1)
-for cond in ["control","spec-kit","openspec","sdd-eld","speclok","speclok-mcp","speclok-v2"]:
+    return round(p*100, 1), round(max(0, (c - h)) * 100, 1), round((c + h) * 100, 1)
+def rate(rs, field): return sum(r[field].strip().lower() == "true" for r in rs)
+for cond in ["control", "spec-kit", "openspec", "speclok", "speclok-mcp", "speclok-v2"]:
     rs = [r for r in rows if r["condition"] == cond]; n = len(rs)
-    k = sum(r["forbidden_files_changed"].strip().lower() == "true" for r in rs)
     tok = sorted(int(r["input_tokens"]) for r in rs)
-    q = st.quantiles(tok, n=4, method="inclusive")
-    print(cond, wilson(k, n), f"{st.median(tok)/1e3:.0f}k [{q[0]/1e3:.0f}-{q[2]/1e3:.0f}]")
+    print(cond, "oos", wilson(rate(rs, "forbidden_files_changed"), n),
+          "correct", wilson(rate(rs, "hidden_tests_pass"), n), f"{st.median(tok)/1e3:.0f}k")
 ```
 
 ---
 
 Wilson score intervals, z=1.96. "speclok (current)" is the published build; the "v1" rows are earlier
-iterations; "SDD best-practice" is the full-governance framework layered on top of speclok.
+iterations. An earlier first-pass benchmark (pre-hardening, and run without a git workspace for the
+speclok conditions) is superseded by this table.
